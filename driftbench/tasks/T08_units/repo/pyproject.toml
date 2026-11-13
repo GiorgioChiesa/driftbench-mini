@@ -1,0 +1,7 @@
+[project]
+name = "units"
+version = "0.5.0"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

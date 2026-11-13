@@ -1,0 +1,7 @@
+[project]
+name = "inventory"
+version = "1.2.0"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

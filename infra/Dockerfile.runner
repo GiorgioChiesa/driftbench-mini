@@ -1,0 +1,26 @@
+# All-in-one image for the EIDOSLAB swarm (launch with `submit`, never `docker run`):
+# Ollama server + Claude Code + the task sandbox (python 3.11, pytest 8.3.3, git, ripgrep).
+# One service = one Ollama on the GPU(s) swarm assigns + a batch of episodes run in-process.
+# The harness code, tasks, models (.ollama) and results live in /scratch (~/scratch, mounted by submit).
+#
+# Build on hssh1 (context = a local dir holding this file, ahi-entry.sh and the `claude` binary):
+#   docker build -t eidos-service.di.unito.it/chiesa/ahi-runner:0.20.1 -f Dockerfile.runner .
+#   docker push eidos-service.di.unito.it/chiesa/ahi-runner:0.20.1
+#
+# Keep Python at 3.11: T02 cascade c1 imports math.sumprod (3.12+), which must keep failing.
+# pytest-cov / pytest-xdist are deliberately absent: some cascade injections depend on that.
+# Ollama pinned to 0.20.1: hssh nodes run NVIDIA driver 535, newer Ollama silently falls back to CPU.
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y --no-install-recommends git ripgrep procps ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir pytest==8.3.3
+RUN git config --system user.email agent@example.org && git config --system user.name agent \
+    && git config --system --add safe.directory '*'
+COPY --from=ollama/ollama:0.20.1 /usr/bin/ollama /usr/bin/ollama
+COPY --from=ollama/ollama:0.20.1 /usr/lib/ollama /usr/lib/ollama
+COPY claude /usr/local/bin/claude
+COPY ahi-entry.sh /usr/local/bin/ahi-entry.sh
+# no NVIDIA_VISIBLE_DEVICES here: the swarm runtime exposes only the GPUs it assigned to the service
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility \
+    LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+ENTRYPOINT ["/usr/local/bin/ahi-entry.sh"]

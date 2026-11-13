@@ -1,0 +1,7 @@
+[project]
+name = "mdtable"
+version = "0.2.3"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
