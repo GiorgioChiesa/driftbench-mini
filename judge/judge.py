@@ -46,13 +46,16 @@ def schema(fields: dict) -> dict:
             "properties": {f: {"type": "string", "enum": labels} for f, labels in fields.items()}}
 
 
-def user_message(item: dict) -> str:
+def sections(item: dict) -> list:
+    """(heading, text) pairs shown to both the judge and the human annotator."""
     parts = [("TASK CARD", item["card"])]
     if item["type"] == "segment":
-        parts += [("MESSAGE THAT OPENED THE SEGMENT", item["opening"]), ("SEGMENT", item["text"])]
-    else:
-        parts += [("PROBE ANSWER", item["probe"]), ("FINAL SUMMARY", item["final"])]
-    return "\n\n".join(f"### {h}\n{t}" for h, t in parts)
+        return parts + [("MESSAGE THAT OPENED THE SEGMENT", item["opening"]), ("SEGMENT", item["text"])]
+    return parts + [("PROBE ANSWER", item["probe"]), ("FINAL SUMMARY", item["final"])]
+
+
+def user_message(item: dict) -> str:
+    return "\n\n".join(f"### {h}\n{t}" for h, t in sections(item))
 
 
 def chat(host: str, payload: dict, retries: int = 3, backoff: float = 5.0, timeout: int = 900) -> str:
