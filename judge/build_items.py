@@ -127,7 +127,7 @@ RUN = r"E\d+_T\d+_[\w.-]+?_r\d+(?!\d)"
 HOSTS = [  # absolute host prefixes that could point at the machine, and so at the model
     (r"/leonardo_(?:work|scratch(?:/fast)?)/[\w.-]+", "/host"),
     (r"/tmp/ahi[\w.-]*(?:/runs)?", "/tmp/run"),
-    (r"/(?:home|Users)/[\w.-]+", "/home/user"),
+    (r"(?<![\w./:-])/(?:home|Users)/[\w.-]+", "/home/user"),
     (r"(?<![\w./-])[\w./-]*/\.?venv/", "/venv/"),
 ]
 
@@ -230,13 +230,15 @@ def check_leaks(items: list, manifest: dict) -> None:
     Searches each raw string field (JSON escaping would hide a match at the start of a line)."""
     models = {m["model"] for m in manifest.values()}
     bad = [re.escape(x) for m in models for x in (m, m.replace(":", "-").replace("/", "-"))]
-    bad += ["gpt-oss", "qwen", "none0", r"(?:user|env|text|cascade|filler)4"]
+    bad += ["gpt-oss", "qwen"]
     pat = re.compile(r"(?<![\w-])(?:" + "|".join(bad) + r")(?![\w-])|/tmp/ahi|" + RUN)
     leaks = [(i["id"], m.group()) for i in items for f in TEXT_FIELDS if (m := pat.search(i.get(f) or ""))]
     if leaks:
         raise SystemExit(f"leak check failed (id, match): {leaks[:5]}")
     for name, rx in (("leonardo", r"(?i)leonardo"), ("Python 3.", r"Python 3\."),
-                     ("email", r"(?<![\w.+-])[\w.+-]+@[\w.-]+")):  # soft fingerprints: warn only
+                     ("email", r"(?<![\w.+-])[\w.+-]+@[\w.-]+"),
+                     # group tokens also occur in plausible agent code (`text4 = 'a b'`): warn only
+                     ("group token", r"(?<![\w-])(?:none0|(?:user|env|text|cascade|filler)4)(?![\w-])")):  # soft fingerprints: warn only
         n = sum(len(re.findall(rx, i.get(f) or "")) for i in items for f in TEXT_FIELDS)
         if n:
             print(f"warning: {n} occurrence(s) of {name} in items", file=sys.stderr)

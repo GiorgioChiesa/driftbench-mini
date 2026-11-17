@@ -8,7 +8,7 @@ from test_build_items_privacy import KEY, abs_path_episode
 
 def test_leak_at_line_start_is_caught(raw):
     d, _ = abs_path_episode(raw)
-    for leak in ("gpt-oss:20b is slow", "cascade4 run"):
+    for leak in ("gpt-oss:20b is slow", "m-a is fast"):
         ep, entry = bi.make_item(d, "episode", "", KEY)
         ep["final"] = f"first line\n{leak}"
         with pytest.raises(SystemExit, match="leak check"):
@@ -35,3 +35,16 @@ def test_leak_check_is_fast_on_large_items():
     t0 = time.time()
     bi.check_leaks(items, {"a": {"model": "gpt-oss:20b"}, "b": {"model": "qwen3-coder:30b"}})
     assert time.time() - t0 < 5
+
+
+def test_group_tokens_in_agent_code_only_warn(raw, capsys):
+    d, _ = abs_path_episode(raw)
+    ep, entry = bi.make_item(d, "episode", "", KEY)
+    ep["final"] = "text4 = 'a b'\nfor u in ['user1', 'user4']: pass\nnone0 = 1"
+    bi.check_leaks([ep], {ep["id"]: entry})
+    assert "group token" in capsys.readouterr().err
+
+
+def test_home_rewrite_skips_urls():
+    assert bi.scrub("see https://example.org/home/page and /home/bob/x.py") == \
+        "see https://example.org/home/page and /home/user/x.py"
