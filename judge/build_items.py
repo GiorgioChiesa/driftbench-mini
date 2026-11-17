@@ -137,6 +137,10 @@ def scrub(s: str) -> str:
     via `ls ..`) would reveal model, group, k and rep; host prefixes hint at the machine."""
     s = re.sub(rf"(?<![\w./-])[\w./-]*{RUN}/work", "/work", s)
     s = re.sub(RUN, "<run>", s)
+    # interpreter/pytest versions differ per host (and so per model): pytest header and bare versions
+    s = re.sub(r"(platform \S+ -- )Python [\w.]+, pytest-[\w.]+, pluggy-[\w.]+",
+               r"\1Python 3.x, pytest-x, pluggy-x", s)
+    s = re.sub(r"Python 3\.\d+(?:\.\w+)?", "Python 3.x", s)
     for pat, neutral in HOSTS:
         s = re.sub(pat, neutral, s)
     return s
@@ -235,7 +239,7 @@ def check_leaks(items: list, manifest: dict) -> None:
     leaks = [(i["id"], m.group()) for i in items for f in TEXT_FIELDS if (m := pat.search(i.get(f) or ""))]
     if leaks:
         raise SystemExit(f"leak check failed (id, match): {leaks[:5]}")
-    for name, rx in (("leonardo", r"(?i)leonardo"), ("Python 3.", r"Python 3\."),
+    for name, rx in (("leonardo", r"(?i)leonardo"), ("Python 3.", r"Python 3\.\d"),
                      ("email", r"(?<![\w.+-])[\w.+-]+@[\w.-]+"),
                      # group tokens also occur in plausible agent code (`text4 = 'a b'`): warn only
                      ("group token", r"(?<![\w-])(?:none0|(?:user|env|text|cascade|filler)4)(?![\w-])")):  # soft fingerprints: warn only

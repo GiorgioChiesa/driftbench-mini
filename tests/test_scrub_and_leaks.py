@@ -48,3 +48,12 @@ def test_group_tokens_in_agent_code_only_warn(raw, capsys):
 def test_home_rewrite_skips_urls():
     assert bi.scrub("see https://example.org/home/page and /home/bob/x.py") == \
         "see https://example.org/home/page and /home/user/x.py"
+
+
+def test_python_and_pytest_versions_are_normalised():
+    s = bi.scrub("============ test session starts ============\n"
+                 "platform linux -- Python 3.11.16, pytest-8.3.3, pluggy-1.7.0\n"
+                 "rootdir: /work\n$ python3 --version\nPython 3.12.0rc1\nPython 3.9.6")
+    assert s.splitlines()[1] == "platform linux -- Python 3.x, pytest-x, pluggy-x"
+    assert s.splitlines()[-2:] == ["Python 3.x", "Python 3.x"]
+    assert "3.11" not in s and "8.3.3" not in s
