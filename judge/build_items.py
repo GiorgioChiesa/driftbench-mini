@@ -168,7 +168,7 @@ def sample_runs(runs: list, rng: random.Random, n_seg: int = 5, n_ep: int = 2) -
     return segs, eps
 
 
-def build(mode: str, raw: Path, exps: list) -> tuple:
+def build(mode: str, raw: Path, exps: list) -> list:
     rng = random.Random(SEED)
     if mode == "all":
         runs = load_runs(raw, exps)

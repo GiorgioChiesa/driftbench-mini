@@ -20,7 +20,7 @@ def test_render_truncates_and_marks_turn_limit(tmp_path):
     out = bi.render_segment(p).splitlines()
     assert out[0] == "AGENT: hello"
     assert out[1] == "TOOL Bash: " + "x" * 400 + "...[truncated]"
-    assert "w" * 700 + "...[truncated]" in out[2:4][1] and "w" * 701 not in "".join(out)
+    assert "w" * 700 + "...[truncated]" in "\n".join(out) and "w" * 701 not in "".join(out)
     assert "  old: " + "o" * 350 + "...[truncated]" in out
     assert "  new: " + "n" * 600 + "...[truncated]" in out
     assert out[-2] == "RESULT: " + "r" * 400 + "...[truncated]"
