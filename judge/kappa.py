@@ -17,10 +17,13 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from judge import codebook
+
 ROOT = Path(__file__).resolve().parent.parent
 FIELD_TYPE = {"label": "segment", "recall": "episode", "claims_complete": "episode",
               "main_accomplishment": "episode"}
 FIELDS = list(FIELD_TYPE)
+CODEBOOK = codebook()
 
 
 def kappa(pairs: list) -> float:
@@ -32,9 +35,14 @@ def kappa(pairs: list) -> float:
     return float("nan") if pe == 1 else (po - pe) / (1 - pe)
 
 
-def bootstrap_ci(pairs: list, n_boot: int = 2000, seed: int = 20261113) -> tuple:
+def pabak(pairs: list, k: int) -> float:
+    """Prevalence- and bias-adjusted kappa for k categories: (k * p_o - 1) / (k - 1)."""
+    return (k * sum(a == b for a, b in pairs) / len(pairs) - 1) / (k - 1)
+
+
+def bootstrap_ci(pairs: list, n_boot: int = 2000, seed: int = 20261113, stat=kappa) -> tuple:
     rng = random.Random(seed)
-    ks = sorted(k for k in (kappa(rng.choices(pairs, k=len(pairs))) for _ in range(n_boot))
+    ks = sorted(k for k in (stat(rng.choices(pairs, k=len(pairs))) for _ in range(n_boot))
                 if not math.isnan(k))
     return (ks[int(0.025 * len(ks))], ks[min(int(0.975 * len(ks)), len(ks) - 1)]) if ks else (math.nan,) * 2
 
@@ -81,17 +89,22 @@ def main(argv=None) -> int:
                    "n_missing": n_exp - len(pairs)}
             if pairs:
                 lo, hi = bootstrap_ci(pairs)
+                n_cat = len(CODEBOOK[FIELD_TYPE[field]][1][field])
+                plo, phi = bootstrap_ci(pairs, stat=lambda p: pabak(p, n_cat))
                 row.update(agreement=round(sum(a == b for a, b in pairs) / len(pairs), 3),
-                           kappa=round(kappa(pairs), 3), ci_lo=round(lo, 3), ci_hi=round(hi, 3))
+                           kappa=round(kappa(pairs), 3), ci_lo=round(lo, 3), ci_hi=round(hi, 3),
+                           pabak=round(pabak(pairs, n_cat), 3), pabak_lo=round(plo, 3),
+                           pabak_hi=round(phi, 3))
             rows.append(row)
             print(f"\n{field} [{model}] n={row['n']}/{n_exp} (missing {row['n_missing']}) "
-                  f"kappa={row.get('kappa')} CI=({row.get('ci_lo')}, {row.get('ci_hi')})"
+                  f"kappa={row.get('kappa')} CI=({row.get('ci_lo')}, {row.get('ci_hi')}) "
+                  f"pabak={row.get('pabak')} CI=({row.get('pabak_lo')}, {row.get('pabak_hi')})"
                   + (f"\n{confusion(pairs)}" if pairs else ""))
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="") as fh:
         w = csv.DictWriter(fh, ["field", "model", "n", "n_expected", "n_missing", "agreement", "kappa",
-                                "ci_lo", "ci_hi"])
+                                "ci_lo", "ci_hi", "pabak", "pabak_lo", "pabak_hi"])
         w.writeheader()
         w.writerows(rows)
     return 0

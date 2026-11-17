@@ -23,6 +23,26 @@ def test_kappa_asymmetric_marginals():
     assert kappa.kappa(pairs) == pytest.approx(0.12 / 0.52)
 
 
+def test_pabak_hand_computed(tmp_path):
+    # 8 of 10 agree: k=3 -> (3 * .8 - 1) / 2 = 0.7; k=5 -> (5 * .8 - 1) / 4 = 0.75
+    pairs = [("A", "A")] * 8 + [("A", "B"), ("B", "A")]
+    assert kappa.pabak(pairs, 3) == pytest.approx(0.7) and kappa.pabak(pairs, 5) == pytest.approx(0.75)
+    lo, hi = kappa.bootstrap_ci(pairs, stat=lambda p: kappa.pabak(p, 5))
+    assert lo < 0.75 < hi
+    human, judge = tmp_path / "h.csv", tmp_path / "j.jsonl"
+    labels = ["GOAL"] * 8 + ["GOAL", "NONE"]
+    human.write_text("id,label,recall,claims_complete,main_accomplishment,notes\n"
+                     + "".join(f"i{n},{lab},,,,\n" for n, lab in enumerate(labels)))
+    judge.write_text("".join(json.dumps({"id": f"i{n}", "type": "segment", "label": lab}) + "\n"
+                             for n, lab in enumerate(["GOAL"] * 8 + ["NONE", "GOAL"])))
+    man = tmp_path / "m.json"
+    man.write_text(json.dumps({f"i{n}": {"type": "segment", "model": "a"} for n in range(10)}))
+    out = tmp_path / "o.csv"
+    kappa.main(["--human", str(human), "--judge", str(judge), "--manifest", str(man), "--out", str(out)])
+    row = next(csv.DictReader(out.open()))  # label has 5 categories in the codebook
+    assert row["agreement"] == "0.8" and row["pabak"] == "0.75" and row["pabak_lo"] and row["pabak_hi"]
+
+
 def test_cli_writes_table_split_by_model(tmp_path, capsys):
     ids = [f"i{n}" for n in range(10)]
     human = tmp_path / "h.csv"

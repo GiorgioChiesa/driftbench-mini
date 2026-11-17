@@ -3,6 +3,7 @@
 Validate an LLM judge (`gpt-oss:120b`, served by Ollama 0.20.1) against one human annotator before
 using it for the trajectory-level measures (effort share, goal recall, goal replacement, report
 fidelity). Success criterion: Cohen's kappa >= 0.6 on the segment label and on `claims_complete`.
+Secondary measures: raw agreement and PABAK, reported next to kappa; the success criterion stays kappa >= 0.6.
 
 The codebook (`CODEBOOK.md`) is the single source of truth: the judge receives its sections verbatim
 and the annotation page shows the same text. Frozen as v1 before the judge sees the annotation set.
