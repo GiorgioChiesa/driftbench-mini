@@ -122,10 +122,24 @@ def item_id(key: bytes, run_id: str, segment: str) -> str:
     return hmac.new(key, f"{run_id}|{segment}".encode(), hashlib.sha256).hexdigest()[:10]
 
 
-def scrub(s: str, run_id: str) -> str:
-    """Absolute run paths (`/tmp/ahi-x/runs/<run_id>/work/...`) would reveal model, group, k and rep."""
-    s = re.sub(rf"[\w./-]*{re.escape(run_id)}/work", "/work", s)
-    return re.sub(rf"[\w./-]*{re.escape(run_id)}", "<run>", s)
+# run_id = <exp>_<task>_<model>_<source><k>_<condition>_r<rep> (harness/run_episode.py)
+RUN = r"E\d+_T\d+_[\w.-]+?_r\d+(?!\d)"
+HOSTS = [  # absolute host prefixes that could point at the machine, and so at the model
+    (r"/leonardo_(?:work|scratch(?:/fast)?)/[\w.-]+", "/host"),
+    (r"/tmp/ahi[\w.-]*(?:/runs)?", "/tmp/run"),
+    (r"/(?:home|Users)/[\w.-]+", "/home/user"),
+    (r"(?<![\w./-])[\w./-]*/\.?venv/", "/venv/"),
+]
+
+
+def scrub(s: str) -> str:
+    """Absolute run paths (`/tmp/ahi-x/runs/<run_id>/work/...`) and any run id (also sibling runs seen
+    via `ls ..`) would reveal model, group, k and rep; host prefixes hint at the machine."""
+    s = re.sub(rf"(?<![\w./-])[\w./-]*{RUN}/work", "/work", s)
+    s = re.sub(RUN, "<run>", s)
+    for pat, neutral in HOSTS:
+        s = re.sub(pat, neutral, s)
+    return s
 
 
 def make_item(run: Path, kind: str, tag: str, key: bytes) -> tuple:
@@ -143,7 +157,7 @@ def make_item(run: Path, kind: str, tag: str, key: bytes) -> tuple:
         has_final = any(s["tag"] == "final" for s in m["segments"])
         item["probe"] = m.get("probe_text") or "(no probe answer)"
         item["final"] = (m.get("final_text") or "(empty)") if has_final else "(no final segment)"
-    item.update({f: scrub(v, spec["run_id"]) for f, v in item.items() if f not in ("id", "type")})
+    item.update({f: scrub(v) for f, v in item.items() if f not in ("id", "type")})
     entry = {"run_id": spec["run_id"], "exp": spec["exp"], "model": spec["model"], "k": spec["k"],
              "source": spec["source"], "group": f"{spec['source']}{spec['k']}", "segment": seg, "type": kind}
     return item, entry
@@ -208,17 +222,24 @@ def build(mode: str, raw: Path, exps: list) -> list:
     return picks
 
 
+TEXT_FIELDS = ("card", "opening", "text", "probe", "final")
+
+
 def check_leaks(items: list, manifest: dict) -> None:
-    """Fail if an item shows what the annotator and judge must not see: run id, model, group, temp paths."""
+    """Fail if an item shows what the annotator and judge must not see: run id, model, group, temp paths.
+    Searches each raw string field (JSON escaping would hide a match at the start of a line)."""
     models = {m["model"] for m in manifest.values()}
     bad = [re.escape(x) for m in models for x in (m, m.replace(":", "-").replace("/", "-"))]
-    bad += [re.escape(m["run_id"]) for m in manifest.values()]
-    bad += ["gpt-oss", "qwen", r"none0", r"(?:user|env|text|cascade|filler)4"]
-    pat = re.compile(r"(?<![\w-])(?:" + "|".join(bad) + r")(?![\w-])|/tmp/ahi|_none_r")
-    hits = [(i["id"], pat.search(json.dumps(i))) for i in items]
-    leaks = [(i, m.group()) for i, m in hits if m]
+    bad += ["gpt-oss", "qwen", "none0", r"(?:user|env|text|cascade|filler)4"]
+    pat = re.compile(r"(?<![\w-])(?:" + "|".join(bad) + r")(?![\w-])|/tmp/ahi|" + RUN)
+    leaks = [(i["id"], m.group()) for i in items for f in TEXT_FIELDS if (m := pat.search(i.get(f) or ""))]
     if leaks:
         raise SystemExit(f"leak check failed (id, match): {leaks[:5]}")
+    for name, rx in (("leonardo", r"(?i)leonardo"), ("Python 3.", r"Python 3\."),
+                     ("email", r"(?<![\w.+-])[\w.+-]+@[\w.-]+")):  # soft fingerprints: warn only
+        n = sum(len(re.findall(rx, i.get(f) or "")) for i in items for f in TEXT_FIELDS)
+        if n:
+            print(f"warning: {n} occurrence(s) of {name} in items", file=sys.stderr)
 
 
 def main(argv=None) -> int:
