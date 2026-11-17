@@ -57,3 +57,11 @@ def test_python_and_pytest_versions_are_normalised():
     assert s.splitlines()[1] == "platform linux -- Python 3.x, pytest-x, pluggy-x"
     assert s.splitlines()[-2:] == ["Python 3.x", "Python 3.x"]
     assert "3.11" not in s and "8.3.3" not in s
+
+
+def test_model_names_from_harness_stream_log_are_scrubbed():
+    s = bi.scrub('RESULT: ../seg0.jsonl:78:{"type":"assistant","message":{"id":"msg_53a2","model":"gpt-oss:20b",'
+                 '"alt":"qwen3-coder-30b"}} ran qwen3-coder:30b and gpt-oss-20b')
+    assert "gpt-oss" not in s and "qwen" not in s
+    assert s.count("<model>") == 4
+    assert bi.scrub("grep -R foo -n . | head") == "grep -R foo -n . | head"

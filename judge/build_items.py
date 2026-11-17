@@ -137,6 +137,8 @@ def scrub(s: str) -> str:
     via `ls ..`) would reveal model, group, k and rep; host prefixes hint at the machine."""
     s = re.sub(rf"(?<![\w./-])[\w./-]*{RUN}/work", "/work", s)
     s = re.sub(RUN, "<run>", s)
+    # an agent `grep -R ..` reads the harness stream log, which carries "model": "gpt-oss:20b"
+    s = re.sub(r"(?i)\b(?:gpt-oss|qwen)[\w:.-]*", "<model>", s)
     # interpreter/pytest versions differ per host (and so per model): pytest header and bare versions
     s = re.sub(r"(platform \S+ -- )Python [\w.]+, pytest-[\w.]+, pluggy-[\w.]+",
                r"\1Python 3.x, pytest-x, pluggy-x", s)

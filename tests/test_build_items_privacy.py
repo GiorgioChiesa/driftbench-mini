@@ -35,7 +35,7 @@ def test_absolute_run_paths_are_normalised(raw):
 def test_leak_check_fails_on_leftover_metadata(raw):
     d, _ = abs_path_episode(raw)
     m = json.loads((d / "metrics.json").read_text())
-    m["final_text"] = "ran gpt-oss:120b with cascade4 settings"  # not a path: scrub cannot fix it
+    m["final_text"] = "ran m-a with cascade4 settings"  # not a path: scrub cannot fix it
     (d / "metrics.json").write_text(json.dumps(m))
     ep, entry = bi.make_item(d, "episode", "", KEY)
     with pytest.raises(SystemExit, match="leak check"):
