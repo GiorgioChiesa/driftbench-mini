@@ -17,6 +17,12 @@ def test_kappa_hand_computed():
     assert kappa.kappa([("A", "A")] * 4) != kappa.kappa([("A", "A")] * 4)  # nan: no variation
 
 
+def test_kappa_asymmetric_marginals():
+    # human GOAL 6 NONE 4; judge GOAL 4 NONE 6; po = 0.6; pe = .6*.4 + .4*.6 = 0.48; kappa = .12/.52
+    pairs = [("GOAL", "GOAL")] * 3 + [("GOAL", "NONE")] * 3 + [("NONE", "GOAL")] + [("NONE", "NONE")] * 3
+    assert kappa.kappa(pairs) == pytest.approx(0.12 / 0.52)
+
+
 def test_cli_writes_table_split_by_model(tmp_path, capsys):
     ids = [f"i{n}" for n in range(10)]
     human = tmp_path / "h.csv"

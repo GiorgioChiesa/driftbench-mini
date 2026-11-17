@@ -1,3 +1,4 @@
+import html
 import json
 import re
 
@@ -15,6 +16,7 @@ def test_page_has_codebook_cards_and_no_metadata(raw, tmp_path):
     assert page.count("class='card'") == 84
     assert "Choose the ONE label" in page and "localStorage" in page and "Export CSV" in page
     assert f"name='{items[0]['id']}__notes'" in page
+    assert all(html.escape(i["card"]) in page for i in items)  # annotator sees the same card as the judge
     manifest = json.loads((tmp_path / "annot_v1_manifest.json").read_text())
     assert not any(m["run_id"] in page for m in manifest.values())
     assert not re.search(r"E1_T01|m-a_|m-b_|_none_r\d|\bgroup\b|manifest", page)
