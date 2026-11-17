@@ -1,6 +1,6 @@
 """Run the E5 LLM judge over an items JSONL with Ollama (spec: judge/DESIGN.md).
 
-  OLLAMA_HOST=localhost:11434 python3 judge/judge.py judge/items/dev.jsonl [--out judge/out/dev.jsonl]
+  OLLAMA_HOST=localhost:11434 python3 judge/judge.py judge/items/dev.jsonl [--model gpt-oss:120b] [--think auto] [--out judge/out/dev__<model>.jsonl]
 
 One output line per item: {"id", "type", <labels>} or {"id", "type", "error"}. Resumable: ids already in
 the output file are skipped. Stdlib only.
@@ -74,12 +74,21 @@ def chat(host: str, payload: dict, retries: int = 3, backoff: float = 5.0, timeo
             time.sleep(backoff * (attempt + 1))
 
 
-def judge_item(item: dict, cb: dict, host: str, model: str, **kw) -> dict:
+def think_value(model: str, think: str):
+    """auto: "medium" for gpt-oss, omitted for models without a thinking mode (they reject or ignore it)."""
+    if think == "auto":
+        return "medium" if model.startswith("gpt-oss") else None
+    return None if think == "none" else think
+
+
+def judge_item(item: dict, cb: dict, host: str, model: str, think: str = "auto", **kw) -> dict:
     system, fields = cb[item["type"]]
-    payload = {"model": model, "stream": False, "think": "medium", "format": schema(fields),
+    payload = {"model": model, "stream": False, "format": schema(fields),
                "options": {"temperature": 0, "num_ctx": 16384},  # 14k-char items + codebook + reasoning
                "messages": [{"role": "system", "content": system},
                             {"role": "user", "content": user_message(item)}]}
+    if (t := think_value(model, think)) is not None:
+        payload["think"] = t
     row = {"id": item["id"], "type": item["type"]}
     try:
         content = chat(host, payload, **kw)
@@ -98,9 +107,11 @@ def main(argv=None) -> int:
     ap.add_argument("items")
     ap.add_argument("--out")
     ap.add_argument("--model", default="gpt-oss:120b")
+    ap.add_argument("--think", choices=["auto", "low", "medium", "high", "none"], default="auto")
     ap.add_argument("--host", default=os.environ.get("OLLAMA_HOST", "localhost:11434"))
     args = ap.parse_args(argv)
-    out = Path(args.out) if args.out else HERE / "out" / Path(args.items).name
+    slug = re.sub(r"[^\w.-]+", "-", args.model)  # one file per model: panel runs must not collide
+    out = Path(args.out) if args.out else HERE / "out" / f"{Path(args.items).stem}__{slug}.jsonl"
     out.parent.mkdir(parents=True, exist_ok=True)
     done = set()
     if out.exists():
@@ -112,7 +123,7 @@ def main(argv=None) -> int:
         for n, item in enumerate(items, 1):
             if item["id"] in done:
                 continue
-            row = judge_item(item, cb, args.host, args.model)
+            row = judge_item(item, cb, args.host, args.model, args.think)
             fh.write(json.dumps(row) + "\n")
             fh.flush()
             print(f"{n}/{len(items)} {row['id']} {'ERROR' if 'error' in row else 'ok'}", flush=True)

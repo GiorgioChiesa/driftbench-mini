@@ -51,3 +51,20 @@ final repository, not by the judge.
 4. The human annotates `annotate_v1.html` and exports the CSV.
 5. `kappa.py`. If kappa >= 0.6: run the judge on `all_E1_E2`. Otherwise analyse disagreements, write
    codebook v2, and validate it on a fresh sample.
+
+## v2 (2026-11-17): judge panel
+
+No human annotator is available, so v2 replaces the human comparison with a panel of three independent
+LLM judges: `gpt-oss:120b`, `gemma3:27b` and `mistral-small3.2:24b`. They are three model families and
+none is an agent under test; `gpt-oss:120b` shares a family with the `gpt-oss-20b` agent, which is
+checked through the per-agent split in `panel.py` output.
+
+- Each judge runs `judge.py` on the same items with the same codebook (`--model`, `--think auto`: medium
+  for gpt-oss, omitted for models without a thinking mode); outputs are `judge/out/<set>__<model-slug>.jsonl`.
+- `panel.py` reports, per field and per agent model (all, each): Fleiss kappa with bootstrap 95% CI,
+  raw agreement, pairwise Cohen kappa, each judge against the majority of the others, and
+  n / n_expected / n_missing. Ties have no majority ("TIE"): they are reported and left out of the
+  majority-based statistics. Majority labels go to `judge/out/<set>_majority.jsonl`.
+- Success criterion: Fleiss kappa >= 0.6 on the segment label and on `claims_complete`.
+- The panel measures inter-judge reliability, not validity against humans. `kappa.py` stays for a
+  future human annotation (`make_html.py` produces the page).

@@ -47,14 +47,18 @@ def bootstrap_ci(pairs: list, n_boot: int = 2000, seed: int = 20261113, stat=kap
     return (ks[int(0.025 * len(ks))], ks[min(int(0.975 * len(ks)), len(ks) - 1)]) if ks else (math.nan,) * 2
 
 
-def load(human: Path, judge: Path) -> tuple:
-    h = {r["id"]: r for r in csv.DictReader(human.open())}
+def load_judge(path: Path) -> dict:
+    """{id: row} from a judge JSONL: the last line for an id wins, error rows are dropped."""
     j = {}
-    for line in judge.read_text().splitlines():
+    for line in path.read_text().splitlines():
         if line.strip():
             r = json.loads(line)
-            j[r["id"]] = r  # the last line for an id wins
-    return h, {i: r for i, r in j.items() if "error" not in r}
+            j[r["id"]] = r
+    return {i: r for i, r in j.items() if "error" not in r}
+
+
+def load(human: Path, judge: Path) -> tuple:
+    return {r["id"]: r for r in csv.DictReader(human.open())}, load_judge(judge)
 
 
 def confusion(pairs: list) -> str:
