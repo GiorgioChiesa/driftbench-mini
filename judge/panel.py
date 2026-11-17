@@ -4,7 +4,7 @@
       judge/out/annot_v1__mistral-small3.2-24b.jsonl --manifest judge/items/annot_v1_manifest.json
 
 Per field and agent-model subset: Fleiss kappa (bootstrap CI by item), raw agreement, pairwise Cohen
-kappa, each judge vs the majority of the others, counts. Writes results/analysis/tables/e5_panel.csv and
+kappa, each judge vs the consensus of the others, counts. Writes results/analysis/tables/e5_panel.csv and
 judge/out/<set>_majority.jsonl (majority label per item; ties are "TIE" and left out of majority stats).
 Stdlib only.
 """
@@ -24,9 +24,10 @@ from kappa import FIELD_TYPE, FIELDS, ROOT, bootstrap_ci, kappa, load_judge
 HERE = Path(__file__).resolve().parent
 
 
-def majority(labels: list) -> str:
+def majority(labels: list, min_votes: int = 1) -> str:
+    """Plurality label, "TIE" if the top count is shared or has fewer than `min_votes` votes."""
     top = Counter(labels).most_common(2)
-    return "TIE" if len(top) > 1 and top[0][1] == top[1][1] else top[0][0]
+    return "TIE" if not top or top[0][1] < min_votes or (len(top) > 1 and top[0][1] == top[1][1]) else top[0][0]
 
 
 def fleiss(rows: list) -> float:
@@ -56,6 +57,8 @@ def main(argv=None) -> int:
     if len(args.judges) < 2:
         ap.error("need at least 2 judge files")
     names = [Path(p).stem.split("__")[-1] for p in args.judges]
+    if len(set(names)) < len(names):
+        ap.error(f"duplicate judge names {names}: one file per judge model")
     judges = [load_judge(Path(p)) for p in args.judges]
     manifest = json.loads(Path(args.manifest).read_text())
     rows, maj = [], {}
@@ -64,8 +67,12 @@ def main(argv=None) -> int:
         if not expected:
             continue
         full = {i: tuple(j[i][field] for j in judges) for i in expected if all(field in j.get(i, {}) for j in judges)}
-        for i, labs in full.items():
-            maj.setdefault(i, {"id": i, "type": FIELD_TYPE[field]})[field] = majority(list(labs))
+        for i in expected:  # the majority file uses the judges that answered, if at least 2 agree
+            got = [j[i][field] for j in judges if field in j.get(i, {})]
+            if got:
+                r = maj.setdefault(i, {"id": i, "type": FIELD_TYPE[field], "n_judges": len(got)})
+                r[field] = majority(got, min_votes=2)
+                r["n_judges"] = min(r["n_judges"], len(got))
         for model in ["all"] + sorted({m["model"] for m in expected.values()}):
             ids = [i for i in full if model == "all" or manifest[i]["model"] == model]
             n_exp = sum(model in ("all", m["model"]) for m in expected.values())
@@ -77,11 +84,14 @@ def main(argv=None) -> int:
                            agreement=round(agreement(data), 3))
                 for (a, na), (b, nb) in itertools.combinations(enumerate(names), 2):
                     row[f"cohen_{na}_{nb}"] = round(kappa([(d[a], d[b]) for d in data]), 3)
-                row["n_tie"] = sum(majority(list(d)) == "TIE" for d in data)  # no panel majority
+                row["n_tie"] = sum(majority(list(d), 2) == "TIE" for d in data)  # no panel majority
+                row["tie_rate"] = round(row["n_tie"] / len(data), 3)
                 for a, na in enumerate(names):
                     mjs = [(d[a], majority([x for k, x in enumerate(d) if k != a])) for d in data]
                     pairs = [p for p in mjs if p[1] != "TIE"]  # ties among the other judges are excluded
-                    row[f"loo_{na}"] = round(kappa(pairs), 3) if pairs else ""
+                    row[f"consensus_{na}"] = round(kappa(pairs), 3) if pairs else ""  # vs the other judges
+                    row[f"n_consensus_{na}"] = len(pairs)
+                    row[f"dist_{na}"] = ";".join(f"{k}:{v}" for k, v in sorted(Counter(d[a] for d in data).items()))
             rows.append(row)
             print(f"{field} [{model}] n={row['n']}/{n_exp} fleiss={row.get('fleiss')} "
                   f"CI=({row.get('fleiss_lo')}, {row.get('fleiss_hi')}) agreement={row.get('agreement')}")

@@ -47,24 +47,39 @@ final repository, not by the judge.
 1. Build `annot_v1` and `dev` on Leonardo.
 2. Run the judge on `dev` (6 items, not annotated) only to check that the pipeline and JSON output
    work. No prompt tuning on the annotation set.
-3. Run the judge on `annot_v1` (SLURM, 2 x A100: `sbatch --gres=gpu:2 ... infra/leonardo_job.sh judge/judge.py judge/items/annot_v1.jsonl`).
-4. The human annotates `annotate_v1.html` and exports the CSV.
-5. `kappa.py`. If kappa >= 0.6: run the judge on `all_E1_E2`. Otherwise analyse disagreements, write
+3. Run the judge on `annot_v1` (SLURM, 2 x A100: `sbatch --gres=gpu:2 ... infra/leonardo_job.sh judge/judge.py judge/items/annot_v1.jsonl`; output `judge/out/annot_v1__<model-slug>.jsonl`).
+4. (Replaced by v2: no human annotator.) The human annotates `annotate_v1.html` and exports the CSV.
+5. (Replaced by v2: `panel.py` and the v2 gate.) `kappa.py`. If kappa >= 0.6: run the judge on `all_E1_E2`. Otherwise analyse disagreements, write
    codebook v2, and validate it on a fresh sample.
 
 ## v2 (2026-11-17): judge panel
 
 No human annotator is available, so v2 replaces the human comparison with a panel of three independent
-LLM judges: `gpt-oss:120b`, `gemma3:27b` and `mistral-small3.2:24b`. They are three model families and
-none is an agent under test; `gpt-oss:120b` shares a family with the `gpt-oss-20b` agent, which is
-checked through the per-agent split in `panel.py` output.
+LLM judges from three families, none an agent under test, run at temperature 0:
 
-- Each judge runs `judge.py` on the same items with the same codebook (`--model`, `--think auto`: medium
-  for gpt-oss, omitted for models without a thinking mode); outputs are `judge/out/<set>__<model-slug>.jsonl`.
+| Judge | Think setting |
+|---|---|
+| `gpt-oss:120b` | `--think medium` |
+| `mistral-small3.2:24b` | `--think off` |
+| `llama3.3:70b` | `--think off` |
+
+`gemma3` cannot be pulled on Ollama 0.20.1. If `llama3.3:70b` fails, the documented fallback is
+`phi4:14b` (`--think off`).
+
+- Each judge runs `judge.py` on the same items with the same codebook (`--model`, `--think`); outputs
+  are `judge/out/<set>__<model-slug>.jsonl`, each row carrying the `model` and `think` used.
 - `panel.py` reports, per field and per agent model (all, each): Fleiss kappa with bootstrap 95% CI,
-  raw agreement, pairwise Cohen kappa, each judge against the majority of the others, and
-  n / n_expected / n_missing. Ties have no majority ("TIE"): they are reported and left out of the
-  majority-based statistics. Majority labels go to `judge/out/<set>_majority.jsonl`.
-- Success criterion: Fleiss kappa >= 0.6 on the segment label and on `claims_complete`.
+  raw agreement, pairwise Cohen kappa (`cohen_<a>_<b>`), each judge against the consensus of the other
+  two (`consensus_<judge>`, `n_consensus_<judge>`), `n` / `n_expected` / `n_missing`, and `n_tie` /
+  `tie_rate`.
+- Downstream labeler for `all_E1_E2`: the panel majority (`judge/out/<set>_majority.jsonl`), computed from
+  the judges that answered if at least 2 agree (`n_judges` flags rows with fewer than 3). Items with no
+  majority (e.g. all three differ) get label `TIE`, no label downstream, and are excluded from the
+  downstream measures; their count and rate are reported (`n_tie`, `tie_rate`).
+- Gate: Fleiss kappa >= 0.6 on the segment label and on `claims_complete`.
+- Family-bias check: `gpt-oss:120b` shares a family with the `gpt-oss-20b` agent. In `e5_panel.csv`,
+  compare the rows for that agent against the other agent: the `cohen_gpt-oss-120b_*` columns (its
+  pairwise Cohen kappas with the other two judges) and the distribution of its labels per agent model
+  against the other judges'.
 - The panel measures inter-judge reliability, not validity against humans. `kappa.py` stays for a
   future human annotation (`make_html.py` produces the page).

@@ -1,6 +1,6 @@
 """Human-vs-judge agreement for E5: Cohen's kappa per field with bootstrap CI (spec: judge/DESIGN.md).
 
-  python3 judge/kappa.py --human annotations_v1.csv --judge judge/out/annot_v1.jsonl \
+  python3 judge/kappa.py --human annotations_v1.csv --judge judge/out/annot_v1__gpt-oss-120b.jsonl \
       --manifest judge/items/annot_v1_manifest.json
 
 Writes results/analysis/tables/e5_kappa.csv (one row per field x model subset) and prints confusion

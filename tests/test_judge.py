@@ -47,7 +47,7 @@ def test_codebook_sections_and_labels():
 def test_request_shape_and_retry(server):
     server["replies"] = [(503, "")]
     row = judge.judge_item(seg("a"), judge.codebook(), server["host"], "gpt-oss:120b", backoff=0)
-    assert row == {"id": "a", "type": "segment", "label": "GOAL"}
+    assert row == {"id": "a", "type": "segment", "model": "gpt-oss:120b", "think": "medium", "label": "GOAL"}
     req = server["requests"][-1]
     assert len(server["requests"]) == 2
     assert req["think"] == "medium" and req["options"]["temperature"] == 0 and req["stream"] is False
@@ -68,7 +68,7 @@ def test_episode_request_schema(server):
     server["replies"] = [(200, json.dumps({"recall": "WRONG", "claims_complete": "NO", "main_accomplishment": "NONE"}))]
     item = {"id": "e", "type": "episode", "card": "card", "probe": "my probe", "final": "my final"}
     row = judge.judge_item(item, judge.codebook(), server["host"], "m", backoff=0)
-    assert row == {"id": "e", "type": "episode", "recall": "WRONG", "claims_complete": "NO",
+    assert row == {"id": "e", "type": "episode", "model": "m", "think": None, "recall": "WRONG", "claims_complete": "NO",
                    "main_accomplishment": "NONE"}
     req = server["requests"][0]
     assert req["format"]["required"] == ["recall", "claims_complete", "main_accomplishment"]

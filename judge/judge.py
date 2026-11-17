@@ -75,10 +75,10 @@ def chat(host: str, payload: dict, retries: int = 3, backoff: float = 5.0, timeo
 
 
 def think_value(model: str, think: str):
-    """auto: "medium" for gpt-oss, omitted for models without a thinking mode (they reject or ignore it)."""
+    """auto: "medium" for gpt-oss, omitted otherwise; on/off send true/false; none omits the field."""
     if think == "auto":
         return "medium" if model.startswith("gpt-oss") else None
-    return None if think == "none" else think
+    return {"none": None, "on": True, "off": False}.get(think, think)
 
 
 def judge_item(item: dict, cb: dict, host: str, model: str, think: str = "auto", **kw) -> dict:
@@ -89,7 +89,7 @@ def judge_item(item: dict, cb: dict, host: str, model: str, think: str = "auto",
                             {"role": "user", "content": user_message(item)}]}
     if (t := think_value(model, think)) is not None:
         payload["think"] = t
-    row = {"id": item["id"], "type": item["type"]}
+    row = {"id": item["id"], "type": item["type"], "model": model, "think": payload.get("think")}
     try:
         content = chat(host, payload, **kw)
         res = json.loads(content)
@@ -107,7 +107,7 @@ def main(argv=None) -> int:
     ap.add_argument("items")
     ap.add_argument("--out")
     ap.add_argument("--model", default="gpt-oss:120b")
-    ap.add_argument("--think", choices=["auto", "low", "medium", "high", "none"], default="auto")
+    ap.add_argument("--think", choices=["auto", "on", "off", "low", "medium", "high", "none"], default="auto")
     ap.add_argument("--host", default=os.environ.get("OLLAMA_HOST", "localhost:11434"))
     args = ap.parse_args(argv)
     slug = re.sub(r"[^\w.-]+", "-", args.model)  # one file per model: panel runs must not collide
@@ -117,6 +117,8 @@ def main(argv=None) -> int:
     if out.exists():
         rows = [json.loads(line) for line in out.read_text().splitlines() if line.strip()]
         done = {r["id"] for r in rows if "error" not in r}  # error rows are retried (last line wins)
+        if any(r.get("think", "?") != think_value(args.model, args.think) for r in rows):
+            print(f"warning: {out} has rows written with a different think setting", file=sys.stderr)
     cb = codebook()
     items = [json.loads(line) for line in Path(args.items).read_text().splitlines() if line.strip()]
     with open(out, "a") as fh:
