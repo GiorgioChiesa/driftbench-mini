@@ -35,10 +35,25 @@ def test_cli_writes_table_split_by_model(tmp_path, capsys):
     judge.write_text("".join(json.dumps({"id": i, "type": "segment", "label": "GOAL" if n < 6 else "NONE"}) + "\n"
                              for n, i in enumerate(ids)))
     manifest = tmp_path / "m.json"
-    manifest.write_text(json.dumps({i: {"model": "a" if n % 2 else "b"} for n, i in enumerate(ids)}))
+    manifest.write_text(json.dumps({i: {"type": "segment", "model": "a" if n % 2 else "b"} for n, i in enumerate(ids)}))
     out = tmp_path / "tables" / "e5_kappa.csv"
     kappa.main(["--human", str(human), "--judge", str(judge), "--manifest", str(manifest), "--out", str(out)])
     rows = list(csv.DictReader(out.open()))
     assert [(r["field"], r["model"], r["n"], r["kappa"]) for r in rows] == [
         ("label", "all", "10", "1.0"), ("label", "a", "5", "1.0"), ("label", "b", "5", "1.0")]
     assert "GOAL" in capsys.readouterr().out
+    assert [(r["n_expected"], r["n_missing"]) for r in rows] == [("10", "0"), ("5", "0"), ("5", "0")]
+
+
+def test_missing_items_are_counted(tmp_path):
+    human = tmp_path / "h.csv"
+    human.write_text("id,label,recall,claims_complete,main_accomplishment,notes\ni0,GOAL,,,,\ni1,,,,,\n")
+    judge = tmp_path / "j.jsonl"
+    judge.write_text(json.dumps({"id": "i0", "type": "segment", "label": "GOAL"}) + "\n"
+                     + json.dumps({"id": "i1", "type": "segment", "label": "NONE"}) + "\n")
+    manifest = tmp_path / "m.json"
+    manifest.write_text(json.dumps({f"i{n}": {"type": "segment", "model": "a"} for n in range(3)}))
+    out = tmp_path / "o.csv"
+    kappa.main(["--human", str(human), "--judge", str(judge), "--manifest", str(manifest), "--out", str(out)])
+    row = next(csv.DictReader(out.open()))
+    assert (row["n"], row["n_expected"], row["n_missing"]) == ("1", "3", "2")

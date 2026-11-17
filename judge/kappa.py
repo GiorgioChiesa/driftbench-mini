@@ -18,7 +18,9 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-FIELDS = ["label", "recall", "claims_complete", "main_accomplishment"]
+FIELD_TYPE = {"label": "segment", "recall": "episode", "claims_complete": "episode",
+              "main_accomplishment": "episode"}
+FIELDS = list(FIELD_TYPE)
 
 
 def kappa(pairs: list) -> float:
@@ -66,23 +68,30 @@ def main(argv=None) -> int:
     manifest = json.loads(Path(args.manifest).read_text())
     rows = []
     for field in FIELDS:
-        both = [i for i in human if i in judge and i in manifest
+        expected = {i: m for i, m in manifest.items() if m["type"] == FIELD_TYPE[field]}
+        if not expected:
+            continue
+        both = [i for i in expected if i in human and i in judge
                 and (human[i].get(field) or "").strip() and judge[i].get(field)]
-        for model in ["all"] + sorted({manifest[i]["model"] for i in both}):
+        for model in ["all"] + sorted({m["model"] for m in expected.values()}):
+            n_exp = sum(model in ("all", m["model"]) for m in expected.values())
             pairs = [(human[i][field].strip(), judge[i][field]) for i in both
                      if model == "all" or manifest[i]["model"] == model]
-            if not pairs:
-                continue
-            lo, hi = bootstrap_ci(pairs)
-            rows.append({"field": field, "model": model, "n": len(pairs),
-                         "agreement": round(sum(a == b for a, b in pairs) / len(pairs), 3),
-                         "kappa": round(kappa(pairs), 3), "ci_lo": round(lo, 3), "ci_hi": round(hi, 3)})
-            print(f"\n{field} [{model}] n={len(pairs)} kappa={rows[-1]['kappa']} "
-                  f"CI=({rows[-1]['ci_lo']}, {rows[-1]['ci_hi']})\n{confusion(pairs)}")
+            row = {"field": field, "model": model, "n": len(pairs), "n_expected": n_exp,
+                   "n_missing": n_exp - len(pairs)}
+            if pairs:
+                lo, hi = bootstrap_ci(pairs)
+                row.update(agreement=round(sum(a == b for a, b in pairs) / len(pairs), 3),
+                           kappa=round(kappa(pairs), 3), ci_lo=round(lo, 3), ci_hi=round(hi, 3))
+            rows.append(row)
+            print(f"\n{field} [{model}] n={row['n']}/{n_exp} (missing {row['n_missing']}) "
+                  f"kappa={row.get('kappa')} CI=({row.get('ci_lo')}, {row.get('ci_hi')})"
+                  + (f"\n{confusion(pairs)}" if pairs else ""))
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="") as fh:
-        w = csv.DictWriter(fh, ["field", "model", "n", "agreement", "kappa", "ci_lo", "ci_hi"])
+        w = csv.DictWriter(fh, ["field", "model", "n", "n_expected", "n_missing", "agreement", "kappa",
+                                "ci_lo", "ci_hi"])
         w.writeheader()
         w.writerows(rows)
     return 0

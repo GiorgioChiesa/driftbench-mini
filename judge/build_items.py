@@ -11,8 +11,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import random
+import re
+import secrets
 import sys
 from pathlib import Path
 
@@ -98,7 +101,8 @@ def task_card(task_dir: Path, spec: dict) -> tuple:
             desc = item["text"]
         else:
             desc = "planted in " + "; ".join(
-                f"{o['file']}: {(o.get('text') or o.get('new', '')).strip()[:300]}" for o in item["ops"])
+                f"{o['file']}: " + cut(f"{o['old'].strip()} -> {o['new'].strip()}" if o["op"] == "replace"
+                                       else o["text"].strip(), 300) for o in item["ops"])
         lines.append(f"- [{src}, {item['kind']}] {desc}")
     card = ("ORIGINAL GOAL:\n" + (task_dir / "goal.md").read_text().strip()
             + "\n\nFILES THE GOAL MAY CHANGE:\n" + "\n".join(f"- {f}" for f in task["allowed"])
@@ -114,17 +118,23 @@ def opening_message(tag: str, task_dir: Path, task: dict, spec: dict) -> str:
     return select_injections(task, spec["source"], spec["k"])[1][int(tag[4:]) - 1]
 
 
-def item_id(run_id: str, segment: str) -> str:
-    return hashlib.sha256(f"e5v1|{run_id}|{segment}".encode()).hexdigest()[:10]
+def item_id(key: bytes, run_id: str, segment: str) -> str:
+    return hmac.new(key, f"{run_id}|{segment}".encode(), hashlib.sha256).hexdigest()[:10]
 
 
-def make_item(run: Path, kind: str, tag: str = "") -> tuple:
+def scrub(s: str, run_id: str) -> str:
+    """Absolute run paths (`/tmp/ahi-x/runs/<run_id>/work/...`) would reveal model, group, k and rep."""
+    s = re.sub(rf"[\w./-]*{re.escape(run_id)}/work", "/work", s)
+    return re.sub(rf"[\w./-]*{re.escape(run_id)}", "<run>", s)
+
+
+def make_item(run: Path, kind: str, tag: str, key: bytes) -> tuple:
     """Return (item, manifest entry) for a segment (`tag`) or the probe/summary of episode `run`."""
     spec = json.loads((run / "spec.json").read_text())
     task_dir = TASKS / spec["task"]
     card, task = task_card(task_dir, spec)
     seg = tag if kind == "segment" else "episode"
-    item = {"id": item_id(spec["run_id"], seg), "type": kind, "card": card}
+    item = {"id": item_id(key, spec["run_id"], seg), "type": kind, "card": card}
     if kind == "segment":
         item["opening"] = opening_message(tag, task_dir, task, spec)
         item["text"] = render_segment(run / f"{tag}.jsonl")
@@ -133,17 +143,19 @@ def make_item(run: Path, kind: str, tag: str = "") -> tuple:
         has_final = any(s["tag"] == "final" for s in m["segments"])
         item["probe"] = m.get("probe_text") or "(no probe answer)"
         item["final"] = (m.get("final_text") or "(empty)") if has_final else "(no final segment)"
+    item.update({f: scrub(v, spec["run_id"]) for f, v in item.items() if f not in ("id", "type")})
     entry = {"run_id": spec["run_id"], "exp": spec["exp"], "model": spec["model"], "k": spec["k"],
              "source": spec["source"], "group": f"{spec['source']}{spec['k']}", "segment": seg, "type": kind}
     return item, entry
 
 
 # --------------------------------------------------------------------------- selection
-def load_runs(raw: Path, exps: list) -> list:
+def load_runs(raw: Path, exps: list, only_none: bool) -> list:
+    """Runs of the given experiments; `only_none` drops E2 mitigation conditions (sample and dev)."""
     runs = []
     for p in sorted(raw.glob("*/metrics.json")):
         spec = json.loads((p.parent / "spec.json").read_text())
-        if spec["exp"] in exps and spec.get("condition", "none") == "none":
+        if spec["exp"] in exps and (not only_none or spec.get("condition", "none") == "none"):
             runs.append((p.parent, spec))
     return runs
 
@@ -160,22 +172,28 @@ def sample_runs(runs: list, rng: random.Random, n_seg: int = 5, n_ep: int = 2) -
         for source, k in [("none", 0)] + [(s, 4) for s in SOURCES]:
             cell = [r for r, s in runs if s["model"] == model and s["source"] == source and s["k"] == k]
             rng.shuffle(cell)
-            for r in cell[:n_seg]:
+            used, got = 0, 0
+            for r in cell:  # a run without any non-empty segment is skipped, so the cell keeps n_seg
+                used += 1
                 tags = segment_tags(r)
                 if tags:
                     segs.append((r, rng.choice(tags)))
-            eps += [cell[(n_seg + i) % len(cell)] for i in range(n_ep)] if cell else []
+                    got += 1
+                if got == n_seg:
+                    break
+            rest = cell[used:] or cell
+            eps += [rest[i % len(rest)] for i in range(n_ep)] if cell else []
     return segs, eps
 
 
 def build(mode: str, raw: Path, exps: list) -> list:
     rng = random.Random(SEED)
     if mode == "all":
-        runs = load_runs(raw, exps)
+        runs = load_runs(raw, exps, only_none=False)
         picks = [(r, "segment", t) for r, _ in runs for t in segment_tags(r)]
         picks += [(r, "episode", "") for r, _ in runs]
         return picks
-    runs = load_runs(raw, ["E1"])
+    runs = load_runs(raw, ["E1"], only_none=True)
     segs, eps = sample_runs(runs, rng)
     picks = [(r, "segment", t) for r, t in segs] + [(r, "episode", "") for r in eps]
     if mode == "dev":
@@ -190,6 +208,19 @@ def build(mode: str, raw: Path, exps: list) -> list:
     return picks
 
 
+def check_leaks(items: list, manifest: dict) -> None:
+    """Fail if an item shows what the annotator and judge must not see: run id, model, group, temp paths."""
+    models = {m["model"] for m in manifest.values()}
+    bad = [re.escape(x) for m in models for x in (m, m.replace(":", "-").replace("/", "-"))]
+    bad += [re.escape(m["run_id"]) for m in manifest.values()]
+    bad += ["gpt-oss", "qwen", r"none0", r"(?:user|env|text|cascade|filler)4"]
+    pat = re.compile(r"(?<![\w-])(?:" + "|".join(bad) + r")(?![\w-])|/tmp/ahi|_none_r")
+    hits = [(i["id"], pat.search(json.dumps(i))) for i in items]
+    leaks = [(i, m.group()) for i, m in hits if m]
+    if leaks:
+        raise SystemExit(f"leak check failed (id, match): {leaks[:5]}")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=["sample", "dev", "all"])
@@ -198,15 +229,20 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent / "items"))
     args = ap.parse_args(argv)
     picks = build(args.mode, Path(args.raw), args.exp)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    keyfile = out / "id_key"  # private, next to the manifest: ids stay deterministic across runs
+    if not keyfile.exists():
+        keyfile.write_text(secrets.token_hex(32))
+    key = bytes.fromhex(keyfile.read_text().strip())
     items, manifest = [], {}
     for run, kind, tag in picks:
-        item, entry = make_item(run, kind, tag)
+        item, entry = make_item(run, kind, tag, key)
         if item["id"] not in manifest:  # small cells can pick the same episode twice
             items.append(item)
             manifest[item["id"]] = entry
+    check_leaks(items, manifest)
     name = {"sample": "annot_v1", "dev": "dev", "all": "all_" + "_".join(args.exp)}[args.mode]
-    out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
     (out / f"{name}.jsonl").write_text("".join(json.dumps(i) + "\n" for i in items))
     (out / f"{name}_manifest.json").write_text(json.dumps(manifest, indent=1))
     print(f"{name}: {sum(i['type'] == 'segment' for i in items)} segment + "

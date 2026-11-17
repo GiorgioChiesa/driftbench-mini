@@ -42,8 +42,8 @@ for (const el of inputs) {
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(collect())); } catch (e) {}
-  const done = new Set(Object.keys(collect()).filter(k => !k.endsWith('__notes')).map(k => k.split('__')[0]));
-  document.getElementById('count').textContent = done.size;
+  const a = collect();  // an item counts once every one of its fields is answered
+  document.getElementById('count').textContent = IDS.filter(id => NEED[id].every(f => a[id + '__' + f])).length;
 }
 function q(s) { return '"' + String(s || '').replace(/"/g, '""') + '"'; }
 function exportCsv() {
@@ -73,12 +73,13 @@ def build_page(items: list, codebook_text: str) -> str:
     fields = {t: f for t, (_, f) in judge.codebook().items()}
     cards = "".join(card(it, fields[it["type"]]) for it in items)
     ids = json.dumps([it["id"] for it in items])
+    need = json.dumps({it["id"]: list(fields[it["type"]]) for it in items})
     return (f"<!doctype html><html><head><meta charset='utf-8'><title>Annotation v1</title>"
             f"<style>{CSS}</style></head><body>"
             f"<div id='bar'>Annotated: <span id='count'>0</span> / {len(items)} "
             f"<button onclick='exportCsv()'>Export CSV</button> (answers autosave in this browser)</div>"
             f"<h2>Codebook</h2><pre>{html.escape(codebook_text)}</pre>{cards}"
-            f"<script>const IDS = {ids}; const COLUMNS = {json.dumps(COLUMNS)};{JS}</script></body></html>")
+            f"<script>const IDS = {ids}; const NEED = {need}; const COLUMNS = {json.dumps(COLUMNS)};{JS}</script></body></html>")
 
 
 def main(argv=None) -> int:

@@ -104,7 +104,8 @@ def main(argv=None) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     done = set()
     if out.exists():
-        done = {json.loads(line)["id"] for line in out.read_text().splitlines() if line.strip()}
+        rows = [json.loads(line) for line in out.read_text().splitlines() if line.strip()]
+        done = {r["id"] for r in rows if "error" not in r}  # error rows are retried (last line wins)
     cb = codebook()
     items = [json.loads(line) for line in Path(args.items).read_text().splitlines() if line.strip()]
     with open(out, "a") as fh:

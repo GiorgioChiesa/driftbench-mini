@@ -1,5 +1,6 @@
 import json
 import re
+import shutil
 from collections import Counter
 
 import pytest
@@ -83,23 +84,27 @@ def test_items_jsonl_has_no_manifest_fields(raw, tmp_path):
         assert set(item) == keys[item["type"]]
     assert not re.search(r"E1_T01|m-a|m-b|_none_r\d|\"(run_id|model|group|source|k|exp)\"", "\n".join(lines))
 
+KEY = b"test-key"
+
 
 def test_opening_and_card(raw):
     run = raw / "E1_T01_invoice_m-a_user4_none_r0"
-    item, entry = bi.make_item(run, "segment", "slot2")
+    item, entry = bi.make_item(run, "segment", "slot2", KEY)
     assert item["opening"].startswith("One more thing")  # u2, reconstructed from task.json
     assert "[user, sanctioned] Side request" in item["card"]
-    assert bi.make_item(run, "segment", "final")[0]["opening"] == bi.FINAL
+    assert bi.make_item(run, "segment", "final", KEY)[0]["opening"] == bi.FINAL
     assert entry["group"] == "user4" and entry["segment"] == "slot2"
-    c = bi.make_item(raw / "E1_T01_invoice_m-a_cascade4_none_r0", "segment", "seg0")[0]
+    c = bi.make_item(raw / "E1_T01_invoice_m-a_cascade4_none_r0", "segment", "seg0", KEY)[0]
     assert "[cascade, necessary] planted in invoice/money.py" in c["card"]
-    f = bi.make_item(raw / "E1_T01_invoice_m-a_filler4_none_r0", "segment", "slot1")[0]
+    f = bi.make_item(raw / "E1_T01_invoice_m-a_filler4_none_r0", "segment", "slot1", KEY)[0]
     assert f["opening"].startswith("FYI") and "(none)" in f["card"]
 
 
 def test_sample_shape_and_determinism(raw, tmp_path):
-    for name in ("a", "b"):
-        bi.main(["sample", "--raw", str(raw), "--out", str(tmp_path / name)])
+    bi.main(["sample", "--raw", str(raw), "--out", str(tmp_path / "a")])
+    (tmp_path / "b").mkdir()
+    shutil.copy(tmp_path / "a" / "id_key", tmp_path / "b" / "id_key")  # same key -> same ids
+    bi.main(["sample", "--raw", str(raw), "--out", str(tmp_path / "b")])
     a, b = (tmp_path / n / "annot_v1.jsonl" for n in "ab")
     assert a.read_text() == b.read_text()
     items = [json.loads(line) for line in a.read_text().splitlines()]
@@ -119,6 +124,8 @@ def test_sample_shape_and_determinism(raw, tmp_path):
 def test_dev_outside_sample(raw, tmp_path):
     bi.main(["sample", "--raw", str(raw), "--out", str(tmp_path)])
     bi.main(["dev", "--raw", str(raw), "--out", str(tmp_path)])
+    (tmp_path / "again").mkdir()
+    shutil.copy(tmp_path / "id_key", tmp_path / "again" / "id_key")
     bi.main(["dev", "--raw", str(raw), "--out", str(tmp_path / "again")])
     s = json.loads((tmp_path / "annot_v1_manifest.json").read_text())
     d = json.loads((tmp_path / "dev_manifest.json").read_text())

@@ -105,8 +105,6 @@ def test_resume_after_interrupt_has_no_duplicates(server, tmp_path, monkeypatch)
     assert len(sent) == 3 and all(f"card-{i}" in m for i, m in zip("cde", sent))
 
 
-@pytest.mark.xfail(strict=True, reason="judge.py:114 treats error rows as done, so failed items are never retried; "
-                   "kappa.load ('last line wins') implies a retry was intended")
 def test_resume_retries_error_rows(server, tmp_path):
     items, out = tmp_path / "items.jsonl", tmp_path / "out.jsonl"
     items.write_text(json.dumps(seg("a")) + "\n")
