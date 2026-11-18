@@ -29,13 +29,16 @@ export OLLAMA_FLASH_ATTENTION=1 OLLAMA_NOPRUNE=1 OLLAMA_MAX_LOADED_MODELS=1
 echo "[$(date)] $(hostname) job=$SLURM_JOB_ID gpus=${CUDA_VISIBLE_DEVICES:-?}"
 nvidia-smi --query-gpu=index,name,memory.used,memory.total --format=csv,noheader
 # GPU discovery sometimes times out (job 64687813): Ollama then silently runs on CPU, ~14 min per judge item.
-# Retry serve until the log shows library=CUDA.
+# `ollama list` can answer before discovery ends (up to ~40 s), so first wait for any "inference compute" line
+# (new in this attempt: the log is appended across attempts), then require library=CUDA. Retry otherwise.
 OLL=/tmp/ahi-$SLURM_JOB_ID/ollama.log
 for attempt in 1 2 3; do
+  SKIP=$(wc -c < "$OLL" 2>/dev/null || echo 0)
   ollama serve >> "$OLL" 2>&1 &
   SERVE_PID=$!
   for _ in $(seq 120); do ollama list > /dev/null 2>&1 && break; sleep 1; done
-  grep -q 'msg="inference compute".*library=CUDA' "$OLL" && break
+  for _ in $(seq 90); do tail -c +$((SKIP+1)) "$OLL" | grep -q 'msg="inference compute"' && break; sleep 1; done
+  tail -c +$((SKIP+1)) "$OLL" | grep -q 'msg="inference compute".*library=CUDA' && break
   echo "ollama attempt $attempt: no CUDA device"; grep -E 'failure during GPU discovery|id=cpu' "$OLL" | tail -3
   kill $SERVE_PID; wait $SERVE_PID 2>/dev/null; sleep 5
   if [ "$attempt" = 3 ]; then cp "$OLL" "logs/ollama-$SLURM_JOB_ID.log"; exit 3; fi
