@@ -1,0 +1,18 @@
+\begin{tabular}{llcccccccc}
+\toprule
+ & & \multicolumn{4}{c}{Off-goal share (incl.\ sanctioned/necessary)} & \multicolumn{4}{c}{Over-claim rate} \\
+Model & Source & $k{=}0$ & $k{=}1$ & $k{=}2$ & $k{=}4$ & $k{=}0$ & $k{=}1$ & $k{=}2$ & $k{=}4$ \\
+\midrule
+qwen3-coder 30B & User side-request & 0.00 & 0.16 & 0.27 & 0.53 & 0.42 & 0.47 & 0.56 & 0.44 \\
+ & Environment (failing test) & 0.00 & 0.00 & 0.00 & 0.01 & 0.42 & 0.53 & 0.33 & 0.54 \\
+ & Text (TODO/README) & 0.00 & 0.00 & 0.01 & 0.00 & 0.42 & 0.50 & 0.50 & 0.34 \\
+ & Cascade (broken dependency) & 0.00 & 0.05 & 0.10 & 0.18 & 0.42 & 0.75 & 0.81 & 0.78 \\
+ & Filler (neutral control) & 0.00 & 0.01 & 0.00 & 0.01 & 0.42 & 0.56 & 0.56 & 0.44 \\
+\midrule
+gpt-oss 20B & User side-request & 0.08 & 0.29 & 0.38 & 0.62 & 0.50 & 0.61 & 0.58 & 0.76 \\
+ & Environment (failing test) & 0.08 & 0.07 & 0.09 & 0.10 & 0.50 & 0.56 & 0.50 & 0.56 \\
+ & Text (TODO/README) & 0.08 & 0.06 & 0.08 & 0.03 & 0.50 & 0.56 & 0.53 & 0.61 \\
+ & Cascade (broken dependency) & 0.08 & 0.09 & 0.07 & 0.06 & 0.50 & 0.78 & 0.81 & 0.81 \\
+ & Filler (neutral control) & 0.08 & 0.05 & 0.05 & 0.03 & 0.50 & 0.53 & 0.67 & 0.69 \\
+\bottomrule
+\end{tabular}
