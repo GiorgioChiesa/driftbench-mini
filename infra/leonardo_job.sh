@@ -17,8 +17,18 @@ set -u
 AHI=$WORK/ahi
 module load python/3.11.7 > /dev/null 2>&1
 source "$AHI/venv/bin/activate"
-export PATH="$AHI/bin:$AHI/ollama/bin:$PATH"
+export PATH="$AHI/bin:$PATH"
 export HOME=/tmp/ahi-$SLURM_JOB_ID/home && mkdir -p "$HOME"
+# Ollama's GPU discovery loads cuda_v12 (2.4 GB) with a 30 s timeout: from GPFS it timed out on every node (job 64765013 log),
+# from node-local /tmp the copy takes 6 s and discovery 0.23 s. Only cuda_v12 (driver 535); /tmp is a 10 GB tmpfs.
+O=$AHI/ollama; L=/tmp/ahi-$SLURM_JOB_ID/ollama; t0=$SECONDS
+if mkdir -p "$L/lib/ollama" && cp -a "$O/bin" "$L/" \
+   && find "$O/lib/ollama" -maxdepth 1 \( -type f -o -type l \) -exec cp -a {} "$L/lib/ollama/" \; \
+   && cp -a "$O/lib/ollama/cuda_v12" "$L/lib/ollama/"; then
+  echo "ollama copied to $L in $((SECONDS-t0)) s"; export PATH="$L/bin:$PATH"
+else
+  echo "ollama copy to $L failed, using GPFS path"; export PATH="$O/bin:$PATH"
+fi
 # identity for commits the agent makes (the docker sandbox had it in the system git config)
 export GIT_AUTHOR_NAME=agent GIT_AUTHOR_EMAIL=agent@example.org
 export GIT_COMMITTER_NAME=agent GIT_COMMITTER_EMAIL=agent@example.org
