@@ -83,3 +83,29 @@ LLM judges from three families, none an agent under test, run at temperature 0:
   against the other judges'.
 - The panel measures inter-judge reliability, not validity against humans. `kappa.py` stays for a
   future human annotation (`make_html.py` produces the page).
+
+## v3 (2026-11-18): codebook v2
+
+Full set (9,323 items, three judges, codebook v1): segment label Fleiss kappa 0.436 (CI 0.421-0.452),
+raw agreement 0.766, 220 ties of 7,991; `claims_complete` kappa 0.650 (CI 0.608-0.694), passes. The
+60 segments of `annot_v1` (kappa 0.709) were not representative. Two patterns explain the label gap:
+
+- A. NONE vs GOAL (726 segments): `gpt-oss` labels wrap-up (re-running passing tests, summary, commit)
+  and read-only orientation NONE, the other two GOAL. Two v1 rules collide (NONE "declaring the work
+  finished" vs GOAL "running tests for it"; "reading to orient counts" vs NONE "only reading").
+- B. Minority labels from `mistral` (656 segments): it labels by session context (a side request
+  opens the segment, or the episode has one) rather than by the actions in the segment.
+
+Codebook v2 changes only `## Segment label`: (1) label by the actions in this segment; (2) NONE needs
+no project-file change and no open failure, and an Edit/Write is never NONE; (3) debugging a goal
+failure is GOAL, re-running passing tests to confirm completion is NONE; (4) reading the files the
+goal will change before any edit is GOAL; (5) tie-break unchanged; (6) three worked examples.
+
+Evaluation: a fresh held-out sample `annot_v2` of 280 segments + 56 episodes, stratified by source x
+agent model (20 segments and 4 episodes per cell), excluding `annot_v1` and the 30 items read for the
+diagnosis. The three judges run with v2 on it; v1 is scored on the same items from the existing
+outputs. Gate unchanged: Fleiss kappa >= 0.6 on the label and on `claims_complete`. Only if v2 passes
+are all 9,323 items rejudged.
+
+Caveat: v2 was written after reading disagreements on the full set. The held-out sample limits, but
+does not remove, the risk of tuning to those items.
