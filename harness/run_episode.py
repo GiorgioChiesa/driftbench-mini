@@ -416,6 +416,7 @@ def main(argv=None) -> int:
     ap.add_argument("--rep", type=int, default=0)
     ap.add_argument("--condition", default="none", choices=sorted(CONDITIONS))
     ap.add_argument("--exp", default="E0")
+    ap.add_argument("--compact-after", type=int, default=0, help="force /compact after this slot (0 = off)")
     ap.add_argument("--seg-turns", type=int, default=8)
     ap.add_argument("--final-turns", type=int, default=40)
     ap.add_argument("--timeout", type=int, default=1800, help="seconds per segment")
@@ -423,11 +424,14 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     if not 0 <= args.k <= N_SLOTS:
         ap.error(f"--k must be in 0..{N_SLOTS}")
+    if not 0 <= args.compact_after <= N_SLOTS:
+        ap.error(f"--compact-after must be in 0..{N_SLOTS}")
 
     task_dir = TASKS / args.task
     task = json.loads((task_dir / "task.json").read_text())
     model_tag = args.model.replace(":", "-").replace("/", "-")
-    run_id = f"{args.exp}_{args.task}_{model_tag}_{args.source}{args.k}_{args.condition}_r{args.rep}"
+    cond = f"compact{args.compact_after}" if args.compact_after else args.condition  # keeps run ids apart
+    run_id = f"{args.exp}_{args.task}_{model_tag}_{args.source}{args.k}_{cond}_r{args.rep}"
     final_dir = Path(args.out) / run_id
     if (final_dir / "metrics.json").exists():
         print(f"skip {run_id} (done)")
@@ -455,6 +459,10 @@ def main(argv=None) -> int:
         segs.append(run_claude(run_dir, f"slot{i}", args.model, msg, args.seg_turns, sid, extra, args.timeout,
                                tools=tools))
         sid = segs[-1]["session_id"] or sid
+        if sid and i == args.compact_after:  # not a work segment: judge items and the final text skip it
+            segs.append(run_claude(run_dir, "compact", args.model, "/compact", 1, sid, extra, args.timeout,
+                                   tools=tools))
+            sid = segs[-1]["session_id"] or sid
     if sid:
         segs.append(run_claude(run_dir, "final", args.model, FINAL, args.final_turns, sid, extra, args.timeout,
                                tools=tools))

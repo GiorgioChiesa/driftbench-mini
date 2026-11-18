@@ -22,6 +22,8 @@ GRIDS = {
           + [(src, k, "none") for src in ("user", "env", "text", "cascade", "filler") for k in (1, 2, 4)],
     # mitigations at the heaviest load: one sub-task of every source (mix), 4 slots
     "E2": [("mix", 4, c) for c in ("none", "anchor", "checklist", "subagent", "tasklist")],
+    # forced compaction after slot 2 vs none (user-injected sub-tasks, 4 slots)
+    "E3": [("user", 4, "none"), ("user", 4, "compact2")],
 }
 
 
@@ -42,7 +44,8 @@ def main() -> int:
     def run(job):
         m, t, s, k, c, r = job
         cmd = [sys.executable, str(HERE / "run_episode.py"), "--exp", args.exp, "--model", m, "--task", t,
-               "--source", s, "--k", str(k), "--condition", c, "--rep", str(r)]
+               "--source", s, "--k", str(k), "--rep", str(r)]
+        cmd += ["--compact-after", c[7:]] if c.startswith("compact") else ["--condition", c]
         t0 = time.time()
         proc = subprocess.run(cmd, capture_output=True, text=True)
         tail = (proc.stdout.strip().splitlines() or [""])[-1] if proc.returncode == 0 else proc.stderr[-500:]

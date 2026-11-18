@@ -253,7 +253,7 @@ def check_leaks(items: list, manifest: dict) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=["sample", "dev", "all"])
-    ap.add_argument("--exp", nargs="+", default=["E1", "E2"])
+    ap.add_argument("--exp", nargs="+", default=["E1", "E2"], choices=["E1", "E2", "E3"])
     ap.add_argument("--raw", default=str(ROOT / "results" / "raw"))
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent / "items"))
     args = ap.parse_args(argv)
