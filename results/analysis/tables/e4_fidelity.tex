@@ -1,0 +1,44 @@
+\begin{tabular}{lllcccc}
+\toprule
+Model & Group & $k$ & Over-claim (\%) & Omitted out-of-scope (\%) & Omitted protected (\%) & Omitted if changed (\%) \\
+\midrule
+qwen3-coder 30B & No sub-task (k=0) & 0 & 42 [22, 64] & 0 [0, 0] & 0 [0, 0] & 0 [0, 0] \\
+ & User side-request & 1 & 47 [22, 72] & 6 [0, 14] & 3 [0, 8] & 50 [0, 100] \\
+ & User side-request & 2 & 56 [39, 72] & 0 [0, 0] & 0 [0, 0] & 0 [0, 0] \\
+ & User side-request & 4 & 44 [17, 72] & 8 [0, 22] & 0 [0, 0] & 75 [67, 100] \\
+ & Environment (failing test) & 1 & 53 [31, 75] & 3 [0, 8] & 0 [0, 0] & 20 [0, 50] \\
+ & Environment (failing test) & 2 & 33 [14, 53] & 3 [0, 8] & 0 [0, 0] & 25 [0, 50] \\
+ & Environment (failing test) & 4 & 54 [34, 74] & 0 [0, 0] & 0 [0, 0] & 0 [0, 0] \\
+ & Text (TODO/README) & 1 & 50 [31, 69] & 6 [0, 17] & 0 [0, 0] & 40 [0, 100] \\
+ & Text (TODO/README) & 2 & 50 [31, 69] & 0 [0, 0] & 0 [0, 0] & 0 [0, 0] \\
+ & Text (TODO/README) & 4 & 34 [11, 61] & 0 [0, 0] & 0 [0, 0] & 0 [0, 0] \\
+ & Cascade (broken dependency) & 1 & 75 [58, 89] & 0 [0, 0] & 0 [0, 0] & 0 [0, 0] \\
+ & Cascade (broken dependency) & 2 & 81 [67, 94] & 0 [0, 0] & 0 [0, 0] & 0 [0, 0] \\
+ & Cascade (broken dependency) & 4 & 78 [64, 92] & 3 [0, 8] & 0 [0, 0] & 100 [100, 100] \\
+ & Filler (neutral control) & 1 & 56 [33, 78] & 0 [0, 0] & 0 [0, 0] & 0 [0, 0] \\
+ & Filler (neutral control) & 2 & 56 [31, 78] & 3 [0, 8] & 0 [0, 0] & 50 [0, 100] \\
+ & Filler (neutral control) & 4 & 44 [25, 64] & 3 [0, 8] & 0 [0, 0] & 50 [0, 100] \\
+ & No mitigation (E2) & 4 & 69 [48, 86] & 8 [0, 19] & 3 [0, 8] & 75 [0, 100] \\
+ & Goal re-anchoring hook (E2) & 4 & 89 [72, 100] & 3 [0, 8] & 0 [0, 0] & 20 [0, 50] \\
+ & Stop-hook checklist (E2) & 4 & 69 [50, 89] & 3 [0, 8] & 0 [0, 0] & 20 [0, 50] \\
+ & Sub-agent delegation (E2) & 4 & 69 [50, 89] & 11 [3, 19] & 0 [0, 0] & 67 [33, 100] \\
+ & Task list (E2) & 4 & 75 [56, 92] & 6 [0, 14] & 0 [0, 0] & 50 [0, 100] \\
+\midrule
+gpt-oss 20B & No sub-task (k=0) & 0 & 50 [31, 69] & 14 [3, 28] & 11 [3, 19] & 50 [17, 82] \\
+ & User side-request & 1 & 61 [44, 75] & 8 [0, 17] & 8 [0, 17] & 60 [25, 100] \\
+ & User side-request & 2 & 58 [42, 75] & 6 [0, 14] & 3 [0, 8] & 40 [0, 75] \\
+ & User side-request & 4 & 76 [61, 91] & 6 [0, 14] & 3 [0, 8] & 67 [50, 100] \\
+ & Environment (failing test) & 1 & 56 [33, 78] & 17 [6, 31] & 8 [0, 17] & 67 [33, 100] \\
+ & Environment (failing test) & 2 & 50 [30, 69] & 19 [8, 31] & 6 [0, 14] & 70 [44, 91] \\
+ & Environment (failing test) & 4 & 56 [36, 75] & 28 [14, 42] & 11 [0, 25] & 100 [100, 100] \\
+ & Text (TODO/README) & 1 & 56 [36, 72] & 6 [0, 14] & 6 [0, 14] & 33 [0, 67] \\
+ & Text (TODO/README) & 2 & 53 [30, 72] & 22 [8, 36] & 17 [6, 28] & 62 [29, 92] \\
+ & Text (TODO/README) & 4 & 61 [39, 83] & 17 [6, 31] & 14 [6, 22] & 75 [43, 100] \\
+ & Cascade (broken dependency) & 1 & 78 [64, 92] & 19 [8, 31] & 8 [0, 17] & 64 [33, 92] \\
+ & Cascade (broken dependency) & 2 & 81 [72, 89] & 14 [3, 28] & 8 [0, 22] & 83 [40, 100] \\
+ & Cascade (broken dependency) & 4 & 81 [69, 92] & 3 [0, 8] & 3 [0, 8] & 100 [100, 100] \\
+ & Filler (neutral control) & 1 & 53 [33, 75] & 17 [8, 25] & 6 [0, 14] & 60 [33, 100] \\
+ & Filler (neutral control) & 2 & 67 [53, 81] & 8 [0, 17] & 3 [0, 8] & 50 [17, 83] \\
+ & Filler (neutral control) & 4 & 69 [53, 83] & 6 [0, 14] & 6 [0, 14] & 67 [0, 100] \\
+\bottomrule
+\end{tabular}

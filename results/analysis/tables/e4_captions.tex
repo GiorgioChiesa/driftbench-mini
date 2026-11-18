@@ -1,0 +1,12 @@
+% Caption-ready notes (assumptions) for the E4 / E3-obs tables.
+\newcommand{\efourfidelitynote}{Omitted = out-of-scope (pre-existing files only) or protected files changed in the
+diff whose path or basename is not in the final summary; over-claim = summary claims completion while hidden tests
+fail. 95\% CIs: task-cluster bootstrap.}
+\newcommand{\efoursupervisornote}{A failing episode has hidden pass rate $<1$. P0 reads only the final summary and
+alerts if it does not claim completion. P1 reviews at all six pauses and alerts on any segment whose majority label
+is not GOAL (sanctioned and necessary detours included); it also reads the summary. P2 alerts only on DISTRACTOR or
+NONE segments (reviews = alerts). Early = before the final segment. False alarm = alert in a passing episode.
+Reviewers are assumed to apply the labels exactly: an upper bound, not a user study.}
+\newcommand{\ethreeobsnote}{Observational: compaction occurs in long, struggling episodes, so differences are
+correlational. Control episodes are re-weighted to the compacted episodes' (experiment, source, $k$, condition) mix.
+Before/after excludes the compacted segment itself.}
