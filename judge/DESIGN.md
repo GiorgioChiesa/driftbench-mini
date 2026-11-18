@@ -109,3 +109,33 @@ are all 9,323 items rejudged.
 
 Caveat: v2 was written after reading disagreements on the full set. The held-out sample limits, but
 does not remove, the risk of tuning to those items.
+
+### Result and decision (2026-11-18)
+
+`annot_v2` (260 segments, 52 episodes, held out), Fleiss kappa, codebook v1 -> v2 on the same items:
+
+| measure | v1 | v2 |
+|---|---|---|
+| 5 labels | 0.44 (agreement 0.75) | 0.57 (agreement 0.84) |
+| GOAL vs rest | 0.41 | 0.55 |
+| off-goal (SANCTIONED/NECESSARY/DISTRACTOR) vs rest | 0.53 | 0.67 (agreement 0.93) |
+
+By agent, v2 off-goal: `gpt-oss:20b` items 0.75, `qwen3-coder:30b` items 0.54; v2 5 labels 0.77 vs 0.38.
+`claims_complete` v2 0.621 (CI 0.39-0.81). Recall is about 0 and is not used.
+
+Effects on the judges: `mistral` off-goal labels shrank (DISTRACTOR 16 -> 2, NECESSARY 19 -> 9,
+SANCTIONED in user episodes 0.47 -> 0.40; design expectation about 0.39); `llama` NONE 17 -> 33.
+
+Decision (user, 2026-11-18): adopt codebook v2.
+
+- Primary segment measure: binary off-goal vs rest (kappa 0.67, passes the 0.6 gate).
+- The 5-label scheme is secondary, reported with kappa 0.57.
+- `claims_complete` keeps its gate (0.62).
+- Disclose in the report that the binary primary measure was chosen after seeing the `annot_v2`
+  agreement, motivated by the drift definition (work leaving the goal). Qwen-item reliability (0.54) is
+  a stated limitation; the residual disagreement is GOAL vs NONE on qwen items (verbose pytest output).
+
+Execution: all 9,323 E1/E2 items rejudged with v2 as set `all_E1_E2_v2` (outputs
+`judge/out/all_E1_E2_v2__<model>.jsonl`, merged from shards in `judge/items/v2shards/`); the v1 outputs
+`all_E1_E2__*.jsonl` are kept for the v1 -> v2 comparison. Label = majority of answering judges;
+three-way disagreement = no label, tie rate reported.
