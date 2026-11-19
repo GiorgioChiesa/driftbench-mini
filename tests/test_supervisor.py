@@ -47,3 +47,23 @@ def test_before_after_skips_compaction_segment_and_unpaired_episodes():
     labels = {"a": [G, "NECESSARY", "DISTRACTOR", G, G, G], "b": ["NONE"] + [G] * 5}
     out = S.before_after(d, labels)  # b has no 'before' segment
     assert len(out) == 1 and out.before[0] == pytest.approx(0.5) and out.after[0] == 0.0
+
+
+def test_e3_pilot_frame_arm_from_run_id_and_pre_post_shares():
+    d = pd.DataFrame({"run_id": ["x_user4_compact2_r0", "x_user4_none_r0"], "n_protected_modified": [1, 0],
+                      "compactions": [1, 0]})
+    labels = {"x_user4_compact2_r0": [G, "SANCTIONED", G, "DISTRACTOR", None, "NONE"],
+              "x_user4_none_r0": [G] * 6}
+    out = S.e3_pilot_frame(d, labels).set_index("run_id")
+    c = out.loc["x_user4_compact2_r0"]
+    assert c.arm == "compact2" and c.protected_any == 1 and c.auto_compactions == 0
+    assert c.off_pre == pytest.approx(1 / 3) and c.off_post == pytest.approx(1 / 2)  # missing label not counted
+    assert out.loc["x_user4_none_r0", "off_post"] == 0 and out.loc["x_user4_none_r0", "auto_compactions"] == 0
+
+
+def test_e3_pilot_difference_is_compact_minus_none():
+    d = pd.DataFrame({"arm": ["compact2"] * 2 + ["none"] * 2, "task": ["t1", "t2"] * 2})
+    for col, _ in S.E3_MEASURES:
+        d[col] = [1.0, 1.0, 0.0, 0.0]
+    t = S.e3_pilot(d).set_index("measure")
+    assert t.loc["hidden_pass", "diff"] == 1.0 and t.loc["off_post", "n_none"] == 2
