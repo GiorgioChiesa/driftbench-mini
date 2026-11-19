@@ -1,0 +1,241 @@
+\section{Discussion}
+\label{sec:discussion}
+
+Table~\ref{tab:verdicts} sets the results of E1--E5 against the hypotheses of
+Section~\ref{sec:definition}. None is supported as stated. Four are supported in part, mostly
+because the predicted effect appeared for one kind of sub-task or one indicator and not for the
+others, and H3 is not supported.
+
+\begin{table}[t]
+  \centering
+  \caption{Verdicts on the hypotheses. Partly: some of the predictions hold and others do not or
+  were not tested. Evidence from Section~\ref{sec:experiments}; intervals are 95\% task-cluster
+  bootstrap intervals.}
+  \label{tab:verdicts}
+  \small
+  \begin{tabularx}{\textwidth}{@{}l l X@{}}
+    \toprule
+    Hypothesis & Verdict & Evidence \\
+    \midrule
+    H1 dose--response & Partly & Pass rate falls with $k$ for cascades in both models and for four
+      user requests in \texttt{gpt-oss}, beyond the filler control for \texttt{qwen3-coder}
+      cascades; flat for \textsf{env}, \textsf{text} and filler. The off-goal share rises with $k$
+      only for user requests (E1). \\
+    H2 source signatures & Partly & User requests cause incompletion (\texttt{gpt-oss}, $k=4$), as
+      predicted. \textsf{Text} causes no scope violations, \textsf{env} no edits to protected tests,
+      and cascades are the most damaging source, not the least (E1). \\
+    H3 mitigations & Not supported & No mitigation changes the pass rate after Holm correction;
+      deterministic hooks do no better than instruction-based mitigations (E2). \\
+    H4 compaction & Partly & Forced compaction raises the post-compaction off-goal share by $+0.13$
+      $[+0.06, +0.20]$, with an imperfect placebo; the pass rate changes by $-0.05$
+      $[-0.11, +0.00]$; no constraint violations; recall not measurable; inheritance not tested
+      (E3 pilot). \\
+    H5 observability & Partly & Summaries over-claim in 42--50\% of baseline episodes and up to 81\%
+      under cascades, and usually omit the out-of-scope files they changed. A monitor flags more
+      failing episodes per review than review at every pause, but only 18--19\% of them early;
+      monitor degradation not tested (E4). \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{What kind of drift did we observe?}
+
+The literature that motivated this study frames goal drift as the gradual \emph{displacement} of
+the assigned goal by something else: competing objectives, environmental pressure, inherited
+context \citep{arike2025goaldrift,menon2026inherited,saebo2026asymmetric}. Our results support a
+narrower and less dramatic picture, with three features.
+
+\paragraph{The kind of sub-task matters more than how many there are.} Up to four injected
+sub-tasks of most kinds left both models where they started. Neither neutral interruptions of equal
+length nor distractors moved the pass rate. Only two kinds of sub-task hurt: dependencies that had to
+be repaired before the goal could be reached, and, for the weaker model, a stack of four sanctioned
+side requests. A count of sub-tasks is therefore a poor predictor of drift. What matters is whether
+a sub-task demands real work on the path to the goal or competes with the goal for the agent's
+limited budget of turns.
+
+\paragraph{The loss appears as incompletion, not as deviation.} In no condition did the agents edit
+existing files outside the admissible scope to any meaningful degree (below 3.5\% of changed lines).
+They did not chase planted \texttt{TODO}s into unrelated modules, nor did they ``fix'' the unrelated
+failing tests at the expense of the goal. The goal was lost by \emph{not finishing it}. With four
+side requests, \texttt{gpt-oss} completed fewer requirements of the goal and fewer of the requests.
+With broken dependencies, both models more often ended with requirements failing. This matches the
+\emph{unreliability} account of multi-turn degradation \citep{laban2025lost} better than a
+goal-replacement account. The judge panel of E5 points the same way
+(Section~\ref{sec:judge-results}). The work it labels as leaving the goal grows with the number of
+side requests, to 0.53 (\texttt{qwen3-coder}) and 0.62 (\texttt{gpt-oss}) of the segments at
+$k=4$, but almost all of it is work the user
+asked for or repairs the goal needed. Work on distractors stays below 7\% of segments in every
+cell. In these runs, then, drift is mostly legitimate widening of the scope at the user's request,
+followed by goals left unfinished, and not the pursuit of something illegitimate. Two limits apply.
+The panel's labels are reliable, not validated against humans, and the judges could not agree on
+goal recall from the probe, so whether the agents' \emph{beliefs} about the goal shifted remains
+open; the exploratory goal-replacement label shows no shift either.
+
+\paragraph{Necessary work is the most dangerous.} H2 predicted that necessary cascades would cause
+the least drift, because resolving them serves the goal. They caused the most. Two explanations are
+compatible with the data:
+\begin{itemize}
+  \item the agent never found or fixed the broken dependency, so the loss is unresolved necessary
+        work: a capability failure that the injection made visible;
+  \item the agent fixed it but spent its budget, or its attention, doing so, and did not return to
+        the remaining requirements: drift in the intended sense.
+\end{itemize}
+The two predict different trajectories: the first ends with the dependency still broken, the second
+with it repaired and requirements missing. The judge labels separate them only in part. For
+\texttt{gpt-oss} the share of segments spent off the goal does not rise with cascades, which fits
+the first explanation: little visible repair work. For \texttt{qwen3-coder} it rises to 18\% at
+$k=4$, none of it labelled as distraction, which leaves room for the second. Whether each
+dependency ended up repaired was not judged. Either way the practical lesson is the same: the
+sub-tasks that look most
+legitimate, and that a supervisor is least likely to question, are where goal completion is most at
+risk.
+
+The resistance to distractors deserves a caveat. Studies of benign distraction and of instruction
+hijacking report strong effects
+\citep{ma2024caution,mavali2026tab,debenedetti2024agentdojo}. Our distractors were mild and
+plausible rather than adversarial, they pointed away from the task, and every goal ended with ``keep
+the change focused on this feature''. Under these conditions both models behaved conservatively.
+The result says little about more salient or adversarially phrased material.
+
+\paragraph{Compaction shifts effort from the goal to the requests.} The pilot of
+Section~\ref{sec:e3} suggests a mechanism behind part of the incompletion. After the context was
+summarised, \texttt{qwen3-coder} gave more of its remaining segments to the user's side
+requests and slightly less to the goal, with a small, uncertain loss on the goal and a small gain on
+the requests. This fits the concern of Section~\ref{sec:drift} that summarisation decides what
+survives of the original request. One reading, which we have not checked against the compaction
+summaries themselves, is that a summary written mid-session keeps the recent, concrete requests and
+gives less weight to the original specification. The extra work is still sanctioned, so a
+supervisor would see nothing wrong in it. The observational data cannot confirm the effect, because spontaneous compaction marks episodes that
+were already in trouble, and the pilot is small, with a placebo that is not clean. The effect needs a
+larger, preregistered test before it counts as established.
+
+\subsection{Implications for the supervisor}
+
+\paragraph{Drift of this kind is quiet.} A supervisor who reviews the diff---the most common form
+of oversight (Section~\ref{sec:hai})---would see a focused, in-scope change in almost every episode,
+including those in which the goal was badly incomplete. The failure is visible only against the
+requirements, not against the code. This is the situation human-factors research warns about: a
+supervisor's situation awareness depends on the signals the system exposes \citep{endsley1995situation},
+and a tidy diff with a confident summary invites trust that is not calibrated to the outcome
+\citep{lee2004trust}. The summaries add to the problem, which bears on RQ4 and H5. In E1, 42\%
+of \texttt{qwen3-coder} baseline episodes and 50\% of \texttt{gpt-oss} ones end with a summary
+that claims completion while a hidden test fails. With cascades the rate rises to about 0.75--0.81
+in both models, and in E2 the goal re-anchoring hook raises it from 0.69 to 0.89. Part of the
+cascade increase is mechanical, since more episodes fail a test, but it means that the sub-tasks
+most likely to cost the goal are also those after which the agent's report is least reliable. These
+intervals are not corrected for multiplicity, and over-claiming is measured at the level of the
+episode, not per requirement. Relying on passing tests does not close the gap. In 19\% of E1 episodes the
+entire visible suite passed while some requirements of the goal failed, and agents are known to optimise for the tests they can see
+\citep{zhong2025impossiblebench}. Oversight tools should therefore show progress \emph{per
+requirement}, not per file, and make what is still unverified explicit. This is a concrete form of
+the ``conveying progress'' challenge of \citet{bansal2024communication}.
+
+\paragraph{What a supervisor can catch (E4).} The supervisor simulation (Section~\ref{sec:e4})
+puts numbers on this argument. Even with segment labels applied without error, a supervisor who
+reviews what the agent is doing catches few failing episodes in time. Reviewing after every segment
+flags about half of them before the end, at six reviews per episode and with an alert in most
+passing episodes as well, because the alerts fire on detours the user asked for. A monitor for
+illegitimate work is cheap but flags fewer than one in five. Reading the final summary flags fewer
+than one in five at the end, since the summary claims completion in most failing episodes, and it
+usually does not name the out-of-scope files that were changed. Because these failures are
+incompletion, the activity looks normal. The check that would separate failing from passing
+episodes is the one the agent's report replaces: running the acceptance tests of each requirement.
+A supervisor's interface should show that check, and the harness should run it before the agent is
+allowed to report completion.
+
+\paragraph{Where to put checkpoints.} The losses concentrate at recognisable moments: when the agent
+starts repairing something the goal depends on, and when side requests pile up. These are natural
+triggers for the mixed-initiative interruptions advocated by \citet{bui2026proactivity}
+\citep[see also][]{horvitz1999mixed}. They also suit a dynamic autonomy policy of the kind
+implemented by Hedwig \citep{shukla2026hedwig}, which tightens oversight in unfamiliar territory. A
+harness can detect both moments cheaply: an edit to a file outside $S(\Gz)$ that makes a failing
+import or test pass, or a third pending user request. It can then ask the human whether to continue,
+defer or delegate. In E4, review at every pause spent six reviews per episode and alerted in 55--77\% of
+passing episodes, so periodic review mostly interrupts work that was going well. The triggers
+proposed here are untested; the E4 monitor was triggered by illegitimate work, which is rare in
+these runs.
+
+\paragraph{The user is a source of drift too.} Sanctioned side requests are the user's own doing.
+For the weaker model, four of them in one session cost half of the goal's completion and more than
+half of the requests themselves. A design response is to treat a mid-session request as a new item
+in a queue rather than an interruption of the current one: completed after the goal, or handed to a
+separate session with its own context. Claude Code already has the ingredients, namely task lists,
+background sessions and sub-agents. Our results suggest that these work only if the harness, not the
+model, decides to use them.
+
+\paragraph{Mitigations should not depend on compliance.} E2 does not support H3 in its strong form.
+Deterministic hooks were not better than instruction-based mitigations, but the reasons differ.
+\begin{itemize}
+  \item \emph{Re-anchoring} was applied reliably, yet it repeats information the model already has
+        and does nothing about the work that competes with the goal.
+  \item The \emph{stop-hook checklist} acts only when the agent decides to stop. Under turn limits
+        that rarely happened, and in real use agents also stop for other reasons (budgets,
+        timeouts, errors).
+  \item \emph{Delegation} would isolate sub-tasks as intended \citep{fei2026codedelegator}, but the
+        model delegated in two episodes out of 36.
+  \item The \emph{task list} was adopted more often and gave the largest, still non-significant,
+        gain, at the cost of more tool calls and more stray files.
+\end{itemize}
+The common thread is that lightweight interventions inside the session do not change \emph{what}
+the agent spends its budget on. More promising directions are interventions with teeth:
+\begin{itemize}
+  \item a completion gate that checks requirements, not just a stop;
+  \item harness-enforced delegation of recognised sub-task types, rather than a suggestion to
+        delegate;
+  \item budgeting that reserves turns for the goal.
+\end{itemize}
+In all three the compliance of the model stops being a free variable.
+
+\subsection{Limitations}
+
+\begin{description}[leftmargin=0pt]
+  \item[Models.] The agents are 20--30B open-weight models, not the Claude models that Claude Code
+        is designed for. The harness, system prompt and tool descriptions are tuned for those, and the
+        local models often used up their turns: 14\% of \texttt{qwen3-coder}'s final segments ended
+        at the turn limit. Stronger models may absorb more sub-tasks
+        before losing the goal, which would shift the thresholds, not necessarily remove them. The
+        two models also differ widely in baseline competence, so cross-model comparisons are about
+        patterns, not magnitudes.
+  \item[Benchmark.] DriftBench-mini is small and synthetic: twelve libraries of a few hundred
+        lines, with goals specified as numbered requirements and sub-tasks written by us. Real
+        sessions are longer, goals are vaguer and sub-tasks arise organically. Some cascades are
+        necessary only for some implementations, one is all-or-nothing, and two can never change the
+        score (Section~\ref{sec:bench}). Because cascades widen the scope by design, part of their
+        effect may reflect task difficulty rather than drift; the judge-based measures
+        (Section~\ref{sec:judge-results}) address this only in part.
+  \item[Protocol.] The fixed structure of pauses and per-segment turn limits makes conditions
+        comparable but is not how people use agents. It also shaped the mitigations: the stop hook,
+        for instance, rarely had a stop to act on. Results may differ in free-running sessions with
+        larger budgets.
+  \item[Judges.] The judge-based measures rest on a panel of three LLM judges. Their agreement
+        shows reliability, not validity: no human labelled the trajectories. The binary off-goal
+        label was chosen as the primary measure after seeing its held-out agreement, and codebook v2
+        was written after reading the disagreements on the full set. Reliability is lower on
+        \texttt{qwen3-coder} trajectories ($\kappa=0.615$ for the binary label on the full set, 0.48 for
+        the five labels). The judges cannot be blinded to the condition, because they need the injected
+        sub-tasks to tell sanctioned from distracting work. In 3 of 1{,}332 episodes (0.2\%) the
+        agent read the harness's log files with \texttt{grep -R ..} from its sandbox. None of
+        them read the episode specification that names the condition, and agent model names that
+        leaked into two judge items were scrubbed. Goal recall is not used ($\kappa=0.17$) and goal
+        replacement is exploratory ($\kappa=0.45$).
+  \item[Measures and power.] Goal recall is not reported and goal replacement only as exploratory
+        (see above); report fidelity is measured per episode, not per requirement. With 36 episodes per
+        cell, the confidence intervals on a difference are about $\pm 0.05$--$0.10$ for
+        \texttt{qwen3-coder} and up to $\pm 0.2$ for the more variable \texttt{gpt-oss}, so moderate effects, including the E2
+        mitigations, cannot be excluded.
+  \item[E3.] The forced-compaction pilot has one model, one source and twelve tasks with 36
+        episodes per arm. Its placebo comparison is not clean ($+0.05$ on segments that precede the
+        compaction), so part of the post-compaction difference may be imbalance between arms.
+        Agreement on \texttt{claims\_complete} in E3 ($\kappa=0.56$) is below the criterion, so its
+        over-claim figures are weaker than those of E1 and E2. The observational comparison is
+        correlational, since compaction occurs in long, struggling episodes. Inherited drift was
+        not tested.
+  \item[E4.] The supervisor is simulated, not observed. It applies the panel labels without error,
+        so the figures are upper bounds for each policy; real reviewers misread transcripts and tire.
+        The P1 alert rule counts sanctioned and necessary detours as alerts, which inflates its false
+        alarms, and omitted changes rest on a strict file-name match, which inflates omissions.
+        Whether monitors degrade on longer transcripts was not tested.
+  \item[Infrastructure.] The last 45 E1 episodes ran on a different cluster with identical model
+        weights but without container isolation. They are a small share of one model's runs, and
+        no episode referenced evaluation material, but the change is a deviation from the protocol.
+\end{description}

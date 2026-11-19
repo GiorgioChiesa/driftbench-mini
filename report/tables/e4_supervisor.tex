@@ -1,0 +1,27 @@
+\begin{tabular}{llcccccccccc}
+\toprule
+ & & & & \multicolumn{3}{c}{Reviews / episode} & \multicolumn{3}{c}{Failing flagged early (\%)} & \multicolumn{2}{c}{False alarms (\%)} \\
+Model & Group & $n$ & fail & P0 & P1 & P2 & P0 & P1 & P2 & P1 & P2 \\
+\midrule
+qwen3-coder 30B & All episodes & 756 & 525 & 1.0 & 6.0 & 0.7 & 0 & 56 & 19 & 77 & 62 \\
+ & No sub-task (k=0) & 36 & 20 & 1.0 & 6.0 & 0.7 & 0 & 30 & 25 & 50 & 50 \\
+ & User side-request & 108 & 63 & 1.0 & 6.0 & 0.7 & 0 & 94 & 14 & 98 & 69 \\
+ & Environment (failing test) & 108 & 61 & 1.0 & 6.0 & 0.7 & 0 & 21 & 18 & 74 & 68 \\
+ & Text (TODO/README) & 108 & 62 & 1.0 & 6.0 & 0.8 & 0 & 26 & 26 & 67 & 65 \\
+ & Cascade (broken dependency) & 108 & 98 & 1.0 & 6.0 & 0.5 & 0 & 52 & 17 & 90 & 30 \\
+ & Filler (neutral control) & 108 & 66 & 1.0 & 6.0 & 1.0 & 0 & 36 & 32 & 67 & 62 \\
+ & No mitigation (E2) & 36 & 31 & 1.0 & 6.0 & 0.5 & 0 & 77 & 13 & 80 & 80 \\
+ & Goal re-anchoring hook (E2) & 36 & 32 & 1.0 & 6.0 & 0.4 & 0 & 88 & 19 & 100 & 50 \\
+ & Stop-hook checklist (E2) & 36 & 30 & 1.0 & 6.0 & 0.3 & 0 & 83 & 3 & 100 & 50 \\
+ & Sub-agent delegation (E2) & 36 & 31 & 1.0 & 6.0 & 0.6 & 0 & 81 & 23 & 80 & 40 \\
+ & Task list (E2) & 36 & 31 & 1.0 & 6.0 & 0.6 & 0 & 81 & 16 & 100 & 60 \\
+\midrule
+gpt-oss 20B & All episodes & 576 & 444 & 1.0 & 6.0 & 0.3 & 0 & 44 & 18 & 55 & 28 \\
+ & No sub-task (k=0) & 36 & 25 & 1.0 & 6.0 & 0.3 & 0 & 32 & 24 & 45 & 27 \\
+ & User side-request & 108 & 91 & 1.0 & 6.0 & 0.1 & 0 & 96 & 9 & 100 & 12 \\
+ & Environment (failing test) & 108 & 71 & 1.0 & 6.0 & 0.4 & 0 & 30 & 18 & 41 & 30 \\
+ & Text (TODO/README) & 108 & 73 & 1.0 & 6.0 & 0.2 & 0 & 26 & 18 & 37 & 11 \\
+ & Cascade (broken dependency) & 108 & 104 & 1.0 & 6.0 & 0.1 & 0 & 28 & 12 & 100 & 25 \\
+ & Filler (neutral control) & 108 & 80 & 1.0 & 6.0 & 0.8 & 0 & 41 & 36 & 68 & 57 \\
+\bottomrule
+\end{tabular}

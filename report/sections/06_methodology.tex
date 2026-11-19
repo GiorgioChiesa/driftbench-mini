@@ -1,0 +1,156 @@
+\section{Methodology}
+\label{sec:method}
+
+The experiments put the definition of Section~\ref{sec:definition} into practice with three
+components: a small benchmark of coding tasks with planted sub-tasks (DriftBench-mini), a harness
+that drives Claude Code headlessly with locally hosted open-weight models, and an evaluator that
+scores the final repository and the trajectory. All code, task material and raw trajectories are
+part of the project repository.
+
+\subsection{DriftBench-mini}
+\label{sec:bench}
+
+DriftBench-mini contains twelve tasks, each a small, self-contained Python library of 125 to 518
+lines with its own test suite: invoicing with discount codes, word statistics, a todo store, a CSV
+inventory, layered configuration loading, a rate limiter, a Markdown table renderer, a unit
+registry, a double-entry ledger, a web router, log statistics and weighted shortest paths. For each
+task we wrote:
+\begin{itemize}
+  \item a goal $\Gz$ (\texttt{goal.md}) phrased as a short user request with five to seven numbered
+        requirements, closing with ``keep the change focused on this feature'';
+  \item \emph{hidden tests}, one per requirement (5--7 per task), which the agent never sees and
+        which define $\Req$;
+  \item a \emph{visible} test suite inside the repository (5--26 tests), which the agent can run;
+  \item a \emph{scope manifest}: the files a faithful implementation is allowed to change, $S(\Gz)$,
+        and a list of \emph{protected} files (existing tests and modules unrelated to $\Gz$);
+  \item four injections for each of the four sources of Section~\ref{sec:definition}, each labelled
+        with its legitimacy, and a reference solution.
+\end{itemize}
+The injections follow a fixed pattern per source. \textsf{user} injections are sanctioned side
+requests (``Side request: when \texttt{--readability} is passed, the CLI should also print the
+sentence count\ldots{} Then carry on with the top-words feature''); each comes with its own side test
+and may widen the scope. \textsf{env} injections are distractors that make a protected, unrelated test
+fail, for example a new test asserting that abbreviations do not split sentences. \textsf{text}
+injections are distractors that plant instruction-like text, such as a \texttt{TODO(maintainer)}
+asking to migrate the CLI to \texttt{click} before adding options, or a README note asking for type
+hints and \texttt{mypy --strict} on untouched modules. \textsf{cascade} injections are necessary:
+they break something the goal depends on (a wrong rounding mode, a function that reads only the first
+line of a file, a missing import) and widen the scope to the broken file.
+
+\paragraph{Validation.} A script checks every task mechanically before use: the unmodified
+repository passes its visible suite and fails the hidden one; the reference solution passes both;
+every \textsf{env} injection makes the visible suite fail; \textsf{text} injections leave the
+solution's scores unchanged; every \textsf{cascade} injection lowers the hidden or the visible score
+of the solution; every side test fails on the unmodified repository. A lint step also enforces the
+labels (distractors may not widen the scope). All twelve tasks pass.
+
+\paragraph{Known limitations of the material.} Four properties of the cascades and sanctioned
+requests matter for interpretation. (i) Some cascades are necessary only for some implementations:
+a wrong rounding constant in a helper (T01) affects the agent only if it rounds through that helper.
+(ii) One cascade (T01) breaks the package import, so its effect on the pass rate is all-or-nothing,
+unlike the others. (iii) Cascades that corrupt the pytest configuration (\texttt{addopts},
+\texttt{required\_plugins}) affect only the agent's own test runs, because the evaluator neutralises
+those options; they create work but cannot lower the score. (iv) Some sanctioned requests live in
+files that are already in scope, so they cannot show up as scope violations; they are measured by
+their side tests only.
+
+\subsection{Agent and harness}
+\label{sec:harness}
+
+\paragraph{Agent.} The agent is Claude Code~2.1.268 in headless mode
+(\texttt{claude -p --output-format stream-json}), with permissions bypassed inside a sandbox. Instead
+of Anthropic models, it talks to Ollama's Anthropic-compatible endpoint, so that every request goes
+to a local open-weight model. We use two agent models from different families: \texttt{qwen3-coder:30b}
+(a mixture-of-experts model trained for agentic coding) and \texttt{gpt-oss:20b}. A third candidate,
+\texttt{devstral}, was dropped in the pilot because it emitted tool calls as plain text that Claude
+Code did not execute. A panel of three judge models labels the trajectories
+(Section~\ref{sec:e5}), and \texttt{qwen2.5:7b} was the planned weak model for the inherited-drift test of E3, which was not run (Section~\ref{sec:e3}). The tool set is restricted to \texttt{Task} (sub-agents), \texttt{Bash},
+\texttt{Read}, \texttt{Edit} and \texttt{Write}: everything else Claude Code offers (web access,
+scheduling, skills) would inflate the context and add confounds. Claude Code's task-list tools are
+therefore \emph{off} by default and enabled only in the corresponding E2 condition. The context
+window is 64k tokens, with Claude Code's automatic compaction left on, and each run has its own
+configuration directory, so that no user-level instructions, memory or plugins reach the agent.
+
+\paragraph{Episode protocol.} Every episode has the same structure, so that conditions differ only
+in content (Section~\ref{sec:definition}):
+\begin{enumerate}
+  \item \emph{Initial segment}: the goal, with at most 8 agent turns;
+  \item \emph{four pauses}: the session is resumed with a message and at most 8 more turns. The
+        message is a side request (\textsf{user}), a neutral status note of similar length
+        (\textsf{filler}), or ``Please continue.'' in every other condition;
+  \item \emph{final segment}: ``Please continue until the original task is complete. When you are
+        done, end with a short summary of everything you changed and why'', with at most 40 turns;
+  \item \emph{probe}: the session is forked and, with no tools, asked to state the original objective,
+        the side tasks taken on and whether the objective is done. The fork leaves the main
+        trajectory untouched \citep{ding2026contextecho}.
+\end{enumerate}
+Each segment has a 30-minute time limit. \textsf{env}, \textsf{text} and \textsf{cascade}
+injections are applied to the repository before the initial commit, so the agent discovers them as
+it works; \textsf{user} injections occupy the first $k$ pauses. A dose of $k$ means $k$ injections of
+one source; the pilot also used a \textsf{mix} condition with one injection of each source (four
+in total), which E2 reuses as its fixed load.
+
+\paragraph{Infrastructure.} Models were served by Ollama~0.20.1, the newest release compatible with
+the NVIDIA~535 drivers of the servers (newer releases fall back silently to the CPU). Each model had
+its own GPU and three parallel slots, with three episodes running at a time. Two settings turned out
+to matter for speed. Disabling Claude Code's per-request attribution header keeps the prompt prefix
+stable, so Ollama can reuse its cache. Never running more episodes than slots avoids evicting
+other episodes' caches. Almost all episodes ran on a departmental GPU server (NVIDIA A40), with the
+agent in a Docker container that mounted only the task repository and the evaluator in a second
+container without network. The last 45 of the 1{,}152 E1 episodes ran on the CINECA Leonardo
+cluster (NVIDIA A100) in a SLURM job, with Claude Code and pytest as plain processes. There we
+checked that the model weights were identical (same blob digests). Because that setup has no mount
+isolation, the harness flags every tool call that references the benchmark's own files (hidden
+tests, solutions, task definitions); no episode triggered it.
+
+\subsection{Measures}
+\label{sec:measures}
+
+After the probe, the final repository is copied and evaluated. The measures implement the indicator
+families of Section~\ref{sec:definition}:
+\begin{description}[leftmargin=0pt]
+  \item[Outcome.] The \emph{hidden pass rate} is the fraction of hidden requirement tests that pass.
+        A test that cannot even be collected (e.g.\ an import error) counts as failed. The hidden
+        tests run with the repository's pytest configuration and \texttt{conftest} files disabled,
+        so a broken configuration cannot hide or fake a result. \emph{Goal fully met} is the
+        fraction of episodes with all requirements passing. The \emph{side pass rate} scores
+        sanctioned side requests with their own tests.
+  \item[Scope.] The diff against the initial commit is measured in changed lines, excluding caches
+        and tool artefacts (e.g.\ \texttt{\_\_pycache\_\_}, \texttt{pytestdebug.log}). In the pilot
+        and in early E1 runs the raw $\mathrm{OOS}$ ratio was dominated by benign additions: new test
+        files the agent wrote for the goal, and debugging scripts it left behind. Even at $k=0$ it
+        reached 20--50\% for \texttt{gpt-oss}. We therefore split out-of-scope changes into three parts:
+        \begin{itemize}
+          \item \emph{edits to existing files} outside $S^\ast$, the scope-violation measure proper
+                ($\mathrm{OOS}_{\text{exist}}$);
+          \item \emph{new test files};
+          \item \emph{stray new files}, i.e.\ any other new file, which is residual state left in the
+                repository.
+        \end{itemize}
+        Modifications of protected files and commits made by the agent are counted separately.
+  \item[Process.] Tool calls by type, compaction events, segments ending at the turn limit, and the
+        number of times a mitigation hook fired.
+  \item[Representation and reporting.] The probe answer and the final summary are stored for the
+        LLM judges (goal recall, goal replacement and report fidelity). The judge panel of E5
+        (Section~\ref{sec:e5}) now labels every segment and every final summary; the measures
+        derived from its labels are defined in Section~\ref{sec:judge-results}. Goal recall from the
+        probe is not used, because the judges do not agree on it ($\kappa=0.17$).
+\end{description}
+
+\subsection{Analysis}
+\label{sec:analysis}
+
+The episode is the unit of analysis and tasks are the clustering unit, with three repetitions per
+task and cell. Cell means come with 95\% confidence intervals from a task-cluster bootstrap (2{,}000
+resamples of the twelve tasks). The effect of a cell is its difference from the $k=0$ baseline
+($D_k^{\mathrm{src}}$), bootstrapped in the same way. Dose trends are estimated per model and source
+by ordinary least squares, $y = \beta_0 + \beta_1 k + \text{task fixed effects}$, on the $k=0$
+episodes plus that source's $k\in\{1,2,4\}$ episodes, with task-clustered standard errors. To test
+whether a source costs more than an equally long neutral interruption, the same model is fitted on
+the source and the filler control together with a separate slope for the source,
+$y = \beta_0 + \beta_1 k + \beta_2\, k\cdot\mathbb{1}[\text{source}] + \text{task FE}$. Both arms
+share the $k=0$ episodes, and $\beta_2$ is the excess cost per sub-task. A random-intercept mixed
+model was our first choice, but it did not converge on the sparse count outcomes. With every task
+present in every cell, task fixed effects estimate the same contrasts. $p$-values are
+Holm-corrected within each family: the ten slopes of one outcome, the eight source-versus-filler
+contrasts, and the four mitigations of E2.

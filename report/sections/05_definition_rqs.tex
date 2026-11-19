@@ -1,0 +1,151 @@
+\section{Goal drift via sub-task injection: definition, questions and hypotheses}
+\label{sec:definition}
+
+\subsection{Operational definition}
+
+Let a session start with an objective $\Gz$ given by the user at $t=0$. We assume that $\Gz$ can be
+decomposed into a finite set of checkable requirements $\Req=\{r_1,\dots,r_m\}$, for instance hidden
+acceptance tests, and that it comes with an \emph{admissible scope} $S(\Gz)$: the set of files or
+artefacts that a competent and faithful implementation is expected to modify. The agent produces a
+trajectory $\tau=(a_1,\dots,a_T)$ of actions (tool calls and messages) and leaves a final repository
+state $\sigma_T$.
+
+A \textbf{sub-task} $s_i$ is any objective not contained in $\Gz$ that enters the agent's context
+at some time $t_i>0$, either as a message or when the agent first encounters it in the environment.
+We characterise each sub-task along two dimensions.
+
+\emph{Source} $\mathrm{src}(s_i)$, i.e.\ how the sub-task enters the context:
+\begin{itemize}
+  \item \textsf{user}: a side request from the user in the middle of the session;
+  \item \textsf{env}: an obstacle in the environment, e.g.\ an unrelated failing test;
+  \item \textsf{text}: instruction-like text found in the environment, e.g.\ a \texttt{TODO} or
+        README note;
+  \item \textsf{cascade}: an error that must be resolved for $\Gz$ to be reachable, e.g.\ a broken
+        import or a buggy helper.
+\end{itemize}
+In our implementation (Section~\ref{sec:method}), \textsf{user} sub-tasks arrive as messages at
+fixed pauses in the session, whereas \textsf{env}, \textsf{text} and \textsf{cascade} sub-tasks are
+planted in the repository before the session starts and enter the context only when the agent runs
+the tests or reads the affected files.
+
+\emph{Legitimacy} $\kappa(s_i)$ with respect to the principal's intent:
+\begin{itemize}
+  \item \textsf{sanctioned}: the user asked for it;
+  \item \textsf{necessary}: $\Gz$ cannot be completed without it;
+  \item \textsf{distractor}: neither, though it may look reasonable.
+\end{itemize}
+Sanctioned and necessary sub-tasks legitimately widen the scope. Writing $S(s_i)$ for the files a
+sub-task legitimately touches, the admissible scope after injection is
+\begin{equation}
+  S^\ast = S(\Gz)\;\cup\!\!\bigcup_{i:\,\kappa(s_i)\in\{\textsf{sanctioned},\textsf{necessary}\}}\!\! S(s_i).
+\end{equation}
+
+Following the distinction between drift through actions and drift through inaction (failing to
+undo what a competing objective left behind) introduced by \citet{arike2025goaldrift}, and the alignment checks of \citet{jia2024taskshield} and
+\citet{jia2025gpa}, we consider five families of indicators:
+\begin{enumerate}
+  \item \textbf{Outcome loss}: the fraction of $\Req$ satisfied by $\sigma_T$, written
+        $\mathrm{pass}(\tau)$, together with its variance across repeated runs. Following
+        \citet{laban2025lost}, we separate aptitude, the best-case performance, from unreliability,
+        the spread between runs. Sanctioned \textsf{user} sub-tasks are scored separately by their
+        own tests, so that an agent which ignores a legitimate request is not mistaken for a
+        focused one.
+  \item \textbf{Scope violation}: the out-of-scope ratio
+        \[
+          \mathrm{OOS}(\tau)=\frac{|\Delta\sigma\setminus S^\ast|}{|\Delta\sigma|},
+        \]
+        where $|\Delta\sigma|$ is the number of changed lines and $\Delta\sigma\setminus S^\ast$ are the
+        changes outside the admissible scope. This includes any modification of protected artefacts
+        such as existing tests, which we also count separately.
+  \item \textbf{Effort share}: the fraction of actions that serve neither $\Gz$ nor a sanctioned or
+        necessary sub-task, as judged per action by a validated LLM judge:
+        \[
+          \mathrm{EFF}(\tau)=\frac{1}{T}\sum_{t=1}^{T} \mathbb{1}\big[a_t \text{ serves no admissible objective}\big].
+        \]
+  \item \textbf{Representational drift}: whether the agent, probed on a forked copy of the session
+        so that the main trajectory is not perturbed \citep{ding2026contextecho}, can still state
+        $\Gz$ and its completion status (\emph{goal recall}). \emph{Goal replacement} is the extreme
+        case in which the agent's own final summary presents a sub-task as the main accomplishment.
+  \item \textbf{Report fidelity}: agreement between what the agent's final summary claims and what
+        $\sigma_T$ and the tests show, including omitted out-of-scope changes and over-claimed
+        requirements. This indicator links drift to the supervisor's view
+        \citep{bansal2024communication,tang2026fail}.
+\end{enumerate}
+
+\paragraph{Drift as a counterfactual.} A low pass rate does not by itself indicate drift: the agent
+may simply be incapable. We therefore define \textbf{goal drift via sub-task injection} as the
+degradation of these indicators in a trajectory with injected sub-tasks, relative to a matched
+trajectory on the same task without them. For a dose of $k$ injected sub-tasks from source
+$\mathrm{src}$,
+\begin{equation}
+  D_k^{\mathrm{src}} \;=\; \mathbb{E}\big[\mathrm{pass}(\tau_0)\big]-\mathbb{E}\big[\mathrm{pass}(\tau_k^{\mathrm{src}})\big],
+\end{equation}
+and analogously for $\mathrm{OOS}$, $\mathrm{EFF}$ and recall. Every session has the same structure (an initial segment, a fixed number of pauses and a final
+segment), so conditions differ only in what the pauses and the repository contain. Two controls are
+essential:
+\begin{itemize}
+  \item a \emph{neutral-interruption} control, in which every pause in the session carries
+        ``please continue'' instead of a sub-task; this is the $k=0$ trajectory $\tau_0$;
+  \item a \emph{matched-length filler} control, in which pauses carry irrelevant status messages of
+        similar length that request no work.
+\end{itemize}
+The difference between $\tau_k^{\mathrm{src}}$ and the filler condition isolates the effect of
+\emph{new objectives} from the effect of a \emph{longer context}. Long-context studies vary the
+amount, position or relevance of context \citep{liu2024lost,xue2026contextrot}, but not whether it
+carries new objectives; that separation is required to attribute drift to sub-tasks.
+
+\subsection{Research questions}
+
+\begin{description}[leftmargin=0pt]
+  \item[RQ1 (dose and source).] Does goal-level performance degrade as the number of injected
+        sub-tasks grows, beyond the effect of context length alone? Do the four sources produce
+        different drift signatures?
+  \item[RQ2 (harness mitigations).] Which features of the agent harness reduce drift: re-injecting
+        $\Gz$ through hooks, an external requirement checklist verified when the agent stops,
+        delegating sub-tasks to sub-agents with isolated context, or an enforced task list?
+  \item[RQ3 (compaction and inheritance).] Does compaction of the context, or resuming from a
+        trajectory that has already drifted, transmit or amplify drift?
+  \item[RQ4 (supervisor's view).] How faithfully do the agent's own reports reflect drift? How much
+        drift can a supervisor intercept, and at what cost in interventions, under different
+        checkpoint policies?
+\end{description}
+
+\subsection{Hypotheses}
+
+\begin{description}[leftmargin=0pt]
+  \item[H1 (dose--response).] $\mathrm{pass}$ decreases and $\mathrm{OOS}$ and $\mathrm{EFF}$ increase
+        monotonically with $k$. The effect is larger than in the matched-length filler control,
+        consistent with the dilution and pattern-matching mechanisms
+        \citep{arike2025goaldrift,xue2026contextrot}.
+  \item[H2 (source signatures).] Sources differ in \emph{how} they produce drift:
+        \begin{itemize}
+          \item sanctioned \textsf{user} requests mainly cause \emph{incompletion}, i.e.\ the agent
+                does not return to $\Gz$ \citep{laban2025lost,zou2026interruptbench};
+          \item \textsf{text} distractors mainly cause \emph{scope violation}, because the agent
+                follows instruction-shaped artefacts \citep{mavali2026tab,ma2024caution};
+          \item \textsf{env} obstacles mainly cause \emph{effort displacement} and changes to
+                protected tests \citep{zhong2025impossiblebench,gloaguen2026fixedbench};
+          \item necessary \textsf{cascade} sub-tasks cause the least drift per unit of effort, because
+                resolving them serves $\Gz$.
+        \end{itemize}
+  \item[H3 (mitigations).] Mechanisms that act outside the model's context reduce drift more than
+        instructions written into it:
+        \begin{itemize}
+          \item deterministic hooks that re-inject $\Gz$ or block completion until $\Req$ is checked;
+          \item context isolation through sub-agents \citep{fei2026codedelegator}.
+        \end{itemize}
+        Merely asking the agent to ``stay focused'' or to keep a task list does less, because a task
+        list can absorb distractors as easily as it anchors the goal.
+  \item[H4 (compaction and inheritance).] Forced compaction lowers goal recall and increases constraint
+        violations after the compaction point. Resuming from a drifted prefix produced by a weaker
+        model transfers drift to a stronger one \citep{menon2026inherited}.
+  \item[H5 (observability).] Agents' final reports under-report out-of-scope work and over-report
+        completion, so report fidelity is below 1 and decreases with $k$ \citep{tang2026fail}.
+        Drift-triggered checkpoints intercept more drift per human intervention than fixed
+        per-step reviews, but the monitors that trigger them degrade on longer trajectories
+        \citep{martin2026classifier}.
+\end{description}
+
+H1--H4 concern the agent as an operator; H5 concerns the human as its supervisor. The experimental
+programme in the following sections is designed so that the same trajectories serve both levels of
+analysis.

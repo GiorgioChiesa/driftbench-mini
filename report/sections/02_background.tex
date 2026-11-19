@@ -1,0 +1,96 @@
+\section{Background: autonomy, coding agents and Claude Code}
+\label{sec:background}
+
+\subsection{Levels of autonomy and degrees of agency}
+
+The idea that automation comes in degrees predates LLMs. \citet{parasuraman2000model} model
+automation along four information-processing stages---information acquisition, analysis, decision
+selection and action implementation---each of which can be automated to a different level. A
+consultative LLM automates acquisition and analysis and leaves decision and action to the human. A
+coding agent automates all four.
+
+Recent frameworks transpose this view to LLM agents. \citet{feng2025levels} define five levels of
+autonomy by the role the user takes---operator, collaborator, consultant, approver and observer---and
+argue that autonomy is a \emph{design decision}, separable from capability. The distinction matters
+here: the same model can be deployed as an advisor or as an operator, and goal drift is a property of
+the deployment as much as of the model. \citet{kasirzadeh2025characterizing} characterise agents
+along autonomy, efficacy, goal complexity and generality. Coding agents score high on all four:
+they act directly on a codebase, pursue compound goals and are general-purpose.
+\citet{chan2023harms} identify four characteristics that make an algorithmic system more agentic:
+underspecification, directness of impact, goal-directedness and long-term planning. Each one
+plausibly favours sub-task accumulation. Underspecified goals invite the agent to fill gaps with its
+own sub-goals; direct impact means those sub-goals change the repository; long-term planning means
+they persist in the context.
+
+Two further positions frame the normative stakes. \citet{mitchell2025fully} argue that risks to people
+grow with the control a user cedes, and that fully autonomous agents should not be developed.
+\citet{sapkota2025agents} distinguish single-task, tool-using \emph{AI agents} from \emph{agentic AI}
+systems characterised by dynamic task decomposition, multi-agent collaboration and persistent memory.
+Claude Code, with its sub-agents, task lists and memory files, sits between the two. Finally,
+\citet{chan2024visibility} argue that once agents act, \emph{visibility}---agent identifiers,
+real-time monitoring, activity logs---becomes a precondition for accountability. Visibility is also
+the precondition for noticing drift.
+
+\subsection{From code generation to repository-level agents}
+
+Benchmarks track the shift from advice to action. SWE-bench replaced function-level code generation
+with real GitHub issues that must be resolved by editing an entire repository \citep{jimenez2024swebench}.
+At its release, the best model solved under 2\% of issues. SWE-agent showed that performance depends
+heavily on the \emph{agent--computer interface}, treating the model as a new kind of user whose tools
+must be designed for it \citep{yang2024sweagent}. This is an HCI framing applied to the model itself.
+OpenHands provided an open platform in which agents write code, use a shell and browse the web in a
+sandbox \citep{wang2024openhands}, later re-engineered as an SDK for production agents
+\citep{wang2025openhandssdk}. Underneath, most of these systems use the ReAct pattern, which
+interleaves reasoning with tool calls \citep{yao2023react}.
+
+Measured in human time, the tasks that frontier models complete with 50\% reliability had reached
+around 50 minutes by early 2025, and the trend may have accelerated \citep{kwa2025measuring}. The
+authors suggest that the gains are driven primarily by greater reliability and a better ability to
+adapt to mistakes, together with better reasoning and tool use. Longer horizons are a
+double-edged sword for our question. They mean that agents work for longer stretches without human
+input, which is exactly the regime in which an early objective must survive many intervening
+observations, tool outputs and sub-tasks.
+
+\subsection{Claude Code as an operational agent}
+\label{sec:claudecode}
+
+We use Claude Code \citep{anthropic2026claudecode} as the reference system throughout. It is a
+terminal-based agent. In each iteration of its loop the model reads the conversation so far,
+proposes one or more tool calls (reading, searching, editing or writing files; running shell
+commands; fetching web pages), the harness executes them, and the results are appended to the
+context. Six architectural features are directly relevant to goal drift, each with a dual role:
+\begin{description}[leftmargin=0pt]
+  \item[Task lists.] The agent maintains an explicit to-do list that it updates as it works. A task list
+        can anchor the original goal, but it can also \emph{absorb} sub-tasks, giving a distractor the
+        same visual and planning status as the goal.
+  \item[Sub-agents.] Work can be delegated to sub-agents with their own context window, which
+        return only a result. This resembles the planner/coder separation that CodeDelegator uses to
+        stop debugging traces from polluting the planner's context \citep{fei2026codedelegator}. At the
+        same time, hand-offs are where a drifted state can be inherited \citep{menon2026inherited}.
+  \item[Memory files.] Project and user instructions in \texttt{CLAUDE.md} files are loaded into
+        every session. Empirically, these manifests contain mostly operational commands,
+        implementation notes and architecture \citep{chatlatanagulchai2025manifests}, and context files
+        dominate how developers configure agentic tools \citep{galster2026harness}. They can carry a
+        persistent ``north star'', but they are also one more channel through which instruction-like
+        text enters the context.
+  \item[Compaction.] When the context window fills up, the conversation history is summarised.
+        Compaction decides what survives of the original request, and the best way to compress is
+        still an open question: optimising the compressor's guidelines from observed failures
+        improves agents \citep{kang2025acon}, while simply masking old observations matches LLM
+        summarisation at lower cost \citep{lindenbauer2025complexity}.
+  \item[Hooks.] User-defined commands run deterministically at lifecycle events, for example before
+        or after a tool call, when the user submits a prompt, before compaction, or when the agent
+        stops. Hooks make it possible to re-inject a goal, to verify requirements before the agent
+        declares completion, or to run an external monitor, without relying on the model's
+        cooperation.
+  \item[Permission modes and headless use.] The user chooses whether each action must be approved,
+        whether file edits are auto-accepted, or whether all permissions are bypassed. A non-interactive
+        mode emits a machine-readable event stream and allows sessions to be resumed and forked. The
+        permission mode is the concrete knob that sets the autonomy level in Feng et al.'s sense. The
+        headless mode is what makes controlled experiments possible.
+\end{description}
+
+Together, these features turn Claude Code from a conversational assistant into an \emph{operational
+entity}: it holds state (files, task list, memory), acts on an external environment, and decides when
+it is done. The user's main levers are no longer individual suggestions but the configuration of this
+loop: the instructions, the permissions, the hooks and the moments at which they choose to look.

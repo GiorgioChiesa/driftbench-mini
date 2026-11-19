@@ -18,6 +18,7 @@ This repository holds the harness, the 12 tasks, the LLM-judge pipeline, the ana
 | `infra/` | `Dockerfile.agent`, `Dockerfile.runner`, `ahi-entry.sh`, `run_ollama.sh` (EIDOSLAB hssh Docker swarm); `leonardo_job.sh` (SLURM, CINECA Leonardo) |
 | `results/analysis/` | Committed CSV tables (`E1.csv`, `E2.csv`, `E1E2_episode_extra.csv`), `tables/` (CSV + LaTeX), `figures/` |
 | `tests/` | pytest suite for the judge and analysis code (`pytest.ini`) |
+| `report/` | LaTeX sources of the course report and the compiled [`report/main.pdf`](report/main.pdf) (build with `tectonic -X compile main.tex`) |
 
 ## Requirements
 
@@ -111,18 +112,22 @@ sbatch -J e1-gptoss infra/leonardo_job.sh harness/batch.py --exp E1 --models gpt
 - `AHI_RUN_TMP` runs the episode on local disk (the job sets it under `/tmp`) and copies only the result files to `--out`. `AHI_VALIDATE_TMP` does the same for `validate_tasks.py` scratch copies (default `results/`).
 - The paths `$WORK/ahi/{ollama,models,bin,venv,project}` and the account name inside the script are specific to the authors' project; adapt them. On the hssh swarm use `infra/Dockerfile.runner` with `submit`, not `docker run` (header of `infra/ahi-entry.sh`).
 
-## Not in this repository
+## Data
 
-- `results/raw/`: raw episodes (Claude Code transcripts, diffs, work trees). Large, and they contain full agent output.
-- `judge/items/` and `judge/out/`: judge items and outputs. They are gitignored. The item manifest maps opaque ids back to run, model and condition, and the private `id_key` makes the ids reproducible; publishing them would unblind the judging.
-- Model weights (Ollama models), the Claude Code binary and the Leonardo environment.
+The raw episodes and the judge files are on Hugging Face: [SGio16/driftbench-mini](https://huggingface.co/datasets/SGio16/driftbench-mini).
 
-Without these, `judge_measures.py` and `supervisor.py` cannot be re-run from a fresh clone; `aggregate.py` and `analyze.py` work from the committed CSVs.
+- `raw_E0.tar.gz` ... `raw_E3.tar.gz` (plus `raw_SMOKE.tar.gz`): one archive per experiment, each holding `results/raw/<run_id>/` (Claude Code transcripts, diffs, work trees, `metrics.json`). Extract them at the repository root.
+- `judge_items.tar.gz`: `judge/items/` (item manifests for E1/E2 and E3, the annotation page).
+- `judge_out.tar.gz`: `judge/out/` (majority labels of the three-judge panel).
 
-## Citation / report
+With these extracted, `extract_extra.py`, `judge_measures.py` and `supervisor.py` can be re-run from a fresh clone. The manifests map the opaque item ids back to run, model and condition, so the judging is no longer blind once they are public. The tasks are synthetic and the data contain no personal information.
 
-Course report for *AI-Human Interaction*, UniTo. Please cite the report; a reference will be added here.
+Not published: model weights (Ollama models), the Claude Code binary and the Leonardo environment.
+
+## Report
+
+The course report is [`report/main.pdf`](report/main.pdf), with its LaTeX sources in `report/`. Course report for *AI-Human Interaction*, UniTo.
 
 ## License
 
-To be chosen.
+The code is released under the MIT License (see [`LICENSE`](LICENSE)). The report (`report/`) and the data on Hugging Face are released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).

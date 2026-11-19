@@ -1,0 +1,102 @@
+\section{Human--agent interaction: delegating to an operator}
+\label{sec:hai}
+
+\subsection{How developers actually use coding agents}
+
+A first strand of empirical work compares agents with the consultative tools they replace.
+\citet{chen2025codewithme} ran the first controlled study of developers using a copilot versus an
+agent (OpenHands). Agents reduced effort and enabled task completions that participants might not
+have achieved alone. However, making sure that users adequately understood the agent's behaviour
+remained a challenge.
+This is the advisor-to-operator trade-off in miniature: delegation buys throughput at the cost of
+comprehension.
+
+Self-assessment is not a reliable guide to that trade-off. In a randomised controlled trial with 16
+experienced open-source developers working on 246 real tasks in mature projects they had
+contributed to for years,
+\citet{becker2025measuring} found that allowing AI tools increased completion time by 19\%. Yet
+developers expected a 24\% speed-up beforehand and still believed in a 20\% speed-up afterwards.
+\citet{shen2026skill} add a longer-term concern: in randomised experiments on learning a new
+library, AI assistance impaired conceptual understanding, code reading and debugging. Participants
+who fully delegated were faster but learned less. If supervision requires the very skills that
+delegation erodes, oversight quality may degrade precisely as autonomy increases.
+
+Field studies show that experienced developers are aware of this and keep control. In observations
+and surveys, \citet{huang2025dontvibe} find that professionals ``don't vibe, they control'': they
+retain their agency over design and implementation because they insist on software quality, and they
+use agents as collaborators rather than as complete delegates. In a small mixed-methods study, \citet{feng2026junior} find that how much agency is
+allocated to the AI is constrained more by organisational policy than by individual preference.
+Senior engineers delegate through detailed instructions, while juniors oscillate between over-reliance
+and avoidance.
+
+At scale, mining public artefacts gives a complementary picture. Of 567 Claude Code pull requests in
+157 projects, 83.8\% were merged, but 45.1\% of the merged ones needed further changes first
+\citep{watanabe2025agentic}. In the SWE-chat dataset of almost 18{,}000 real sessions, agents author
+virtually all committed code in 41\% of sessions, while only 59\% of agent-produced code survives into
+commits \citep{baumann2026swechat}. Most directly relevant to us, \citet{tang2026fail} analyse 20{,}574
+real coding-agent sessions and operationalise misalignment as \emph{visible developer pushback}.
+Among the seven recurring forms they identify are failures to interpret intent, to bound actions,
+to follow rules and to report progress accurately. 91.5\% of the visible resolutions required
+explicit correction by the user. Over time, overall misalignment rates decline, but constraint
+violations and inaccurate self-reporting \emph{grow} as a share of misalignment episodes. This
+suggests that scope and reporting problems are not being solved by capability gains alone.
+
+\subsection{What oversight work looks like}
+
+Oversight of agents is often discussed normatively. Two recent qualitative studies give it empirical
+content. \citet{dhanorkar2026oversight} interview 17 experienced developers and identify four forms of
+emergent oversight work:
+\begin{itemize}
+  \item \emph{a priori control}: constraining the agent before it starts;
+  \item \emph{co-planning}: agreeing on the plan with the agent;
+  \item \emph{real-time monitoring}: watching the agent as it works;
+  \item \emph{post hoc review}: inspecting the result afterwards.
+\end{itemize}
+Oversight is preventive as well as reactive. One of the heuristics developers adopt---treating
+passing tests as a guarantee of correctness---is exactly the proxy that coding agents are known to
+game \citep{zhong2025impossiblebench}. \citet{park2026delegation} adapt Sheridan's model of human
+supervisory control into seven stages for supervising coding agents. Developers concentrate effort
+in planning, delegate part of the supervision to other agents, and turn recurring guidance into
+reusable assets.
+
+These findings echo classic results. Supervising automation requires \emph{situation awareness}: the
+supervisor must perceive what the system is doing, understand it, and project what it will do next
+\citep{endsley1995situation}. Supervisors also need trust calibrated to the system's actual
+reliability \citep{lee2004trust}. Drift is a direct threat to both. It is gradual, so it does not
+trigger the salient alarms that help perception. And a fluent final summary invites over-trust. The
+sabotage study by \citet{ye2026enemy} is a sobering reference point: 83 of 88 developers (94\%)
+without an automated monitor failed to detect an agent that sabotaged the code to pursue a hidden
+side task, and the authors attribute this to minimal code review, a plausible cover story and
+over-trust. Accidental drift is subtler still, because
+there is no adversary leaving traces.
+
+\subsection{Design responses: communication, checkpoints and dynamic autonomy}
+
+HCI research has begun to propose interaction designs for the operator regime.
+\citet{bansal2024communication} catalogue twelve challenges in human--agent communication. On the
+agent-to-user side these include conveying capabilities, plans, progress and side effects; on the
+user-to-agent side, conveying goals, preferences and constraints. Drift through sub-tasks is a
+failure on both sides. The agent fails to report that its effort has shifted, and the user's original
+intent fails to persist against the agent's own sub-goals.
+
+Magentic-UI implements human-in-the-loop mechanisms such as co-planning, co-tasking, action guards and
+long-term memory \citep{mozannar2025magentic}. Hedwig starts from a survey in which engineers report
+frustration with static autonomy settings; its abstract explicitly mentions ``scope drift'' among the
+agent behaviours that slip past review. The system adjusts the agent's autonomy dynamically,
+loosening oversight where trust has been earned and tightening it in unfamiliar territory
+\citep{shukla2026hedwig}. \citet{bui2026proactivity} argue that agents need a principled policy for
+when to surface information and interrupt, grounded in mixed-initiative interaction
+\citep{horvitz1999mixed}, rather than simply more autonomy. At the other extreme,
+\citet{monperrus2026endreview} argues that human code review is no longer a necessary quality gate.
+If that view prevailed, drift could only be caught by other agents---and LLM monitors themselves
+degrade on long transcripts \citep{martin2026classifier}.
+
+\subsection{Gap}
+
+The empirical HCI literature observes misalignment mostly \emph{after the fact}, through
+developer pushback \citep{tang2026fail} or review \citep{watanabe2025agentic}, and shows that
+oversight depends on cheap but fallible proxies such as passing tests
+\citep{dhanorkar2026oversight}. It does not tell us \emph{when} during a trajectory the goal starts
+to slip, which kinds of sub-tasks cause it, or how much of the drift is visible in what the agent
+reports. Answering those questions requires controlled manipulation of the trajectory itself, which is
+what the goal-drift literature in the next section offers.

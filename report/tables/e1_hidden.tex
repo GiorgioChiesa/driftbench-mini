@@ -1,0 +1,17 @@
+\begin{tabular}{llcccccc}
+\toprule
+Model & Source & $k{=}0$ & $k{=}1$ & $k{=}2$ & $k{=}4$ & Slope per sub-task & vs.\ filler \\
+\midrule
+qwen3-coder 30B & User side-request & 0.77 & 0.79 & 0.73 & 0.78 & +0.001 & $-$0.003 \\
+ & Environment (failing test) & 0.77 & 0.78 & 0.80 & 0.73 & $-$0.010 & $-$0.007 \\
+ & Text (TODO/README) & 0.77 & 0.77 & 0.75 & 0.79 & +0.004 & $-$0.001 \\
+ & Cascade (broken dependency) & 0.77 & 0.64 & 0.53 & 0.50 & $-$0.065** & $-$0.083*** \\
+ & Filler (neutral control) & 0.77 & 0.76 & 0.78 & 0.78 & +0.005 & -- \\
+\midrule
+gpt-oss 20B & User side-request & 0.48 & 0.46 & 0.54 & 0.23 & $-$0.062 & $-$0.032 \\
+ & Environment (failing test) & 0.48 & 0.53 & 0.57 & 0.50 & +0.003 & +0.026 \\
+ & Text (TODO/README) & 0.48 & 0.50 & 0.62 & 0.51 & +0.009 & +0.031 \\
+ & Cascade (broken dependency) & 0.48 & 0.47 & 0.41 & 0.24 & $-$0.062** & $-$0.041 \\
+ & Filler (neutral control) & 0.48 & 0.49 & 0.40 & 0.46 & $-$0.008 & -- \\
+\bottomrule
+\end{tabular}

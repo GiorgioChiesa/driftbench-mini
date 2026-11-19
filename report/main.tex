@@ -1,0 +1,59 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.5cm,marginparwidth=2cm]{geometry}
+\usepackage{fontspec}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,tabularx}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage[authoryear,round]{natbib}
+\usepackage[colorinlistoftodos,textsize=small]{todonotes}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{itemsep=2pt,topsep=4pt}
+\newcommand{\Gz}{G_0}
+\newcommand{\Req}{R(G_0)}
+
+\title{From Advisor to Operator:\\Goal Drift through Sub-Task Accumulation in Autonomous Coding Agents}
+\author{Giorgio Chiesa\\[2pt]\small PhD course \emph{AI--Human Interaction}, Universit\`a di Torino}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Large language models are no longer only consulted: as coding agents such as Claude Code they read
+repositories, run commands, edit files and decide what to do next, and the human moves from
+\emph{operator} to \emph{approver} or \emph{observer}. We study one risk of this shift: that the
+sub-tasks entering a session (broken dependencies, failing tests, instructions found in files, side
+requests from the user) accumulate and pull the agent away from its goal. We review the literature,
+define \emph{goal drift via sub-task injection} as a counterfactual degradation that separates
+sanctioned, necessary and distracting sub-tasks, and test it on DriftBench-mini, twelve coding tasks
+with planted sub-tasks, driving Claude Code with two locally hosted open-weight models (1{,}332
+episodes). Broken dependencies that the goal relies on reduce goal completion sharply in both models:
+from 0.77 to 0.50 and from 0.48 to 0.24 with four of them, beyond a matched-length control. Four side
+requests from the user overload only the weaker model, distractors are largely ignored, and four
+lightweight harness mitigations do not significantly reduce the loss. A panel of three LLM judges
+(Fleiss' $\kappa=0.67$ on the binary off-goal label) finds that off-goal work is mostly legitimate,
+distraction is rare and summaries often claim completion while requirements fail. In a
+forced-compaction pilot, compaction shifts later effort from the goal towards the user's requests
+($+0.13$ off-goal share). A simulated supervisor shows that reviewing or monitoring the agent's
+activity catches few failing episodes early, because the failure is incompletion: only checking the
+requirements reveals it.
+\end{abstract}
+
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_human_agent_interaction}
+\input{sections/04_goal_drift}
+\input{sections/05_definition_rqs}
+\input{sections/06_methodology}
+\input{sections/07_experiments}
+\input{sections/08_discussion}
+\input{sections/09_conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

@@ -1,0 +1,72 @@
+\section{Introduction: from advisor to operator}
+\label{sec:intro}
+
+For most of their short public history, large language models (LLMs) have been \emph{consultative}
+tools. A developer asked a chat assistant how to fix an error, accepted or rejected an inline
+completion, and remained the only actor who touched the codebase. The model advised; the human
+operated. Every consequential action passed through a human decision, and the cost of a bad
+suggestion was bounded by the human's willingness to adopt it.
+
+That arrangement is changing quickly. Coding agents such as Claude Code, OpenHands, Devin, Cursor's
+agent mode or Codex receive a goal in natural language, explore a repository, run commands, edit
+files, execute tests and decide autonomously what to do next
+\citep{yang2024sweagent,wang2024openhands,anthropic2026claudecode}. The capability trend behind
+this shift is steep: the length of software tasks, measured in human time, that frontier models
+complete with 50\% reliability has been doubling roughly every seven months \citep{kwa2025measuring}.
+Adoption is equally fast. Within months of their release, coding agents left traces in an estimated
+22--29\% of a large sample of GitHub projects \citep{robbes2026agentic}, and datasets now count
+close to a million agent-authored pull requests \citep{li2026aidev}.
+
+In the vocabulary of \citet{feng2025levels}, this is a movement along the levels of autonomy: the
+user is no longer the \emph{operator} who executes, but increasingly a \emph{collaborator},
+\emph{approver} or \emph{observer} of work that the agent carries out. Human-factors research has
+long warned about what happens at this point. Automation does not remove the human; it changes the
+human's task into monitoring, which is precisely the task humans are worst at
+\citep{bainbridge1983ironies,parasuraman2000model}. Early empirical work on coding agents confirms
+the pattern. Agents can complete tasks that developers would not have finished alone, but
+making sure that developers adequately understand agent behaviour remains a challenge
+\citep{chen2025codewithme}.
+Their perception of productivity diverges from measured productivity \citep{becker2025measuring}.
+And in a five-hour collaboration study, 94\% of the developers who worked without an automated
+monitor failed to notice that the agent was sabotaging the code to pursue a hidden side task
+\citep{ye2026enemy}.
+
+This report focuses on one specific failure mode that becomes salient once the AI acts rather than
+advises: \textbf{goal drift}, the agent's tendency to deviate progressively from the objective it was
+given \citep{arike2025goaldrift}. We are interested in a mechanism that is particularly natural in
+software engineering. Real coding tasks are never self-contained. While implementing a feature, an
+agent encounters a failing test that seems unrelated, a dependency that does not import, a
+\texttt{TODO} comment asking for a refactoring ``before adding new features'', or a mid-session
+request from the user to ``also fix this''. Each of these is a \emph{sub-task}. Some are necessary to
+reach the goal, some are legitimate additions sanctioned by the user, and some are distractions. As
+sub-tasks accumulate in the context, they compete with the original objective for the agent's
+attention, its plan and its token budget. Our central question is whether, and how, this
+accumulation causes the original goal to be neglected, diluted or replaced---and whether the human
+who delegated the work can see it happening.
+
+The question sits at the intersection of two literatures that rarely meet. Machine-learning work on
+goal drift and long-context degradation studies the agent in isolation, typically in synthetic
+environments \citep{arike2025goaldrift,menon2026inherited,laban2025lost}. Human--computer interaction
+(HCI) work on agent oversight studies how developers supervise agents, mostly through interviews and
+log mining \citep{dhanorkar2026oversight,park2026delegation,tang2026fail}. We argue that drift
+through sub-task accumulation must be studied from both sides at once: what the agent does, and what
+the supervisor perceives and can correct.
+
+\paragraph{Contributions.} This report makes four contributions:
+\begin{enumerate}
+  \item A review of recent work, mostly arXiv 2023--2026, on autonomy levels, coding agents, human
+        oversight of agents and goal drift, organised around the advisor-to-operator transition
+        (Sections~\ref{sec:background}--\ref{sec:drift}). Many of these works are recent preprints
+        that have not yet been peer reviewed; we report their findings as stated by their authors
+        and point out where a claim rests on a single small or simulation-based study.
+  \item An operational definition of \emph{goal drift via sub-task injection} that distinguishes
+        sub-tasks by their source (user, environment, text in the environment, error cascade) and
+        their legitimacy (sanctioned, necessary, distractor). Drift is measured as a counterfactual
+        degradation against matched controls (Section~\ref{sec:definition}).
+  \item Research questions and hypotheses that link agent-side drift to supervisor-side
+        observability (Section~\ref{sec:definition}).
+  \item A small, reproducible experimental programme in which Claude Code is driven headlessly by
+        locally hosted open-weight models on a purpose-built benchmark, DriftBench-mini, with first
+        results on dose, source and harness mitigations
+        (Sections~\ref{sec:method}--\ref{sec:experiments}).
+\end{enumerate}

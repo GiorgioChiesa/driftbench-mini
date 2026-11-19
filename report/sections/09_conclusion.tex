@@ -1,0 +1,57 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+Coding agents such as Claude Code turn the language model from an advisor into an operator, and
+the human from operator into approver or observer \citep{feng2025levels}. This report examined one
+risk of that transition: that the sub-tasks an agent meets or receives during a session---broken
+dependencies, failing tests, instructions in files, side requests---accumulate and pull it away from
+the goal it was given. We reviewed the work on autonomy, coding agents, oversight and goal drift. We
+defined goal drift via sub-task injection as a counterfactual degradation, with sub-tasks classified
+by source and legitimacy and a matched-length control. We then tested the definition on
+DriftBench-mini, with Claude Code driven by two open-weight models in 1{,}332 controlled episodes and a 72-episode compaction pilot.
+
+The findings revise rather than confirm the starting intuition:
+\begin{itemize}
+  \item \textbf{Kind matters more than count.} Neutral interruptions and mild distractors left goal
+        completion unchanged. Broken dependencies on the path to the goal and, for the weaker model,
+        a stack of four side requests reduced it sharply.
+  \item \textbf{The failure is incompletion.} The agents rarely strayed outside the files they were
+        supposed to change. They lost the goal by not finishing it, in a way that a diff-based review
+        would not reveal.
+  \item \textbf{Lightweight harness mitigations are not enough.} Re-injecting the goal, a stop-hook
+        checklist, an instruction to delegate and an enforced task list did not significantly reduce
+        the loss. The two that relied on the model's compliance were adopted only partly.
+  \item \textbf{Off-goal work is mostly legitimate.} A panel of three LLM judges, reliable on the
+        binary off-goal label ($\kappa=0.67$) but not validated against humans, found that the work
+        leaving the goal was almost all what the user asked for or what the goal needed. Work on
+        distractors stayed below 7\% of segments in every cell. Final summaries, however, claimed
+        completion with a hidden test failing in 42--50\% of baseline episodes.
+  \item \textbf{Compaction may tilt effort towards the requests.} In a forced-compaction pilot,
+        \texttt{qwen3-coder} spent more of the segments after compaction on the user's side requests
+        (off-goal share $+0.13$), with a small and uncertain loss on the goal. The pilot is small and
+        its placebo not clean.
+  \item \textbf{Watching the activity catches few failures.} In a simulated supervisor with perfect
+        labels, reviewing every segment flagged about half of the failing episodes before the end at
+        six reviews per episode and with frequent false alarms, and a monitor for illegitimate work
+        flagged fewer than one in five. Failing episodes look like goal work; only the requirements
+        show the failure.
+\end{itemize}
+For the human side of the interaction these results point to oversight based on requirements rather
+than code, checkpoints triggered by recognisable risky moments rather than fixed intervals,
+mid-session requests treated as queued tasks, and mitigations enforced by the harness rather than
+requested from the model.
+
+Four lines of work follow from what this study could not settle:
+\begin{itemize}
+  \item \emph{inherited drift}, with a weak model that uses the harness competently, so that its
+        prefixes drift instead of breaking;
+  \item \emph{monitor degradation}: whether a drift monitor loses accuracy on longer transcripts
+        \citep{martin2026classifier}, which decides whether drift-triggered checkpoints scale;
+  \item \emph{human validation} of the judge panel on a sample, since its agreement shows
+        reliability but not validity;
+  \item \emph{goal recall}, on which the judges do not yet agree ($\kappa=0.17$), and which is needed
+        to test whether compaction changes what the agent believes the goal to be.
+\end{itemize}
+Repeating the core experiments with frontier models, longer and less structured sessions, and
+real-world rather than planted sub-tasks would show how far the thresholds observed here move as
+agents become more capable. We expect them to move; whether they vanish is an empirical question.

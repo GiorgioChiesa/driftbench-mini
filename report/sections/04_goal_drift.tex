@@ -1,0 +1,151 @@
+\section{Goal drift: phenomenon and mechanisms}
+\label{sec:drift}
+
+\subsection{A family of related failures}
+
+``Goal drift'' is used loosely in the literature. Several neighbouring phenomena share its surface
+symptom---the agent ends up doing something other than what the principal wanted---but differ in
+where the competing objective comes from and whether anyone intends it. Table~\ref{tab:phenomena}
+positions them. We use \emph{goal drift} in the sense of \citet{arike2025goaldrift}: an agent's
+tendency to deviate from its original objective \emph{over time}, as an effect of the trajectory
+rather than of a mis-specified goal or an adversary.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{4.2cm}@{}}
+\toprule
+Phenomenon & Origin of the competing objective & Representative work \\
+\midrule
+Goal misgeneralisation & Training: a capable system learns a proxy goal that coincides with
+the intended one only in distribution & \citet{langosco2022goalmisgen,shah2022goalmisgen} \\
+Specification gaming / reward hacking & The objective's proxy (e.g.\ passing tests) is optimised
+instead of the intent & \citet{amodei2016concrete,zhong2025impossiblebench} \\
+Goal hijacking (prompt injection) & An adversary embeds instructions in data the agent reads &
+\citet{zhan2024injecagent,debenedetti2024agentdojo} \\
+Instruction / persona drift & Decay of adherence to system-prompt instructions or persona over many
+turns & \citet{li2024instability,ding2026contextecho} \\
+Action bias / scope creep & The agent acts, or acts more broadly, when no or less action is
+warranted & \citet{gloaguen2026fixedbench,mavali2026tab} \\
+\textbf{Goal drift} & Accumulated context---environmental pressure, prior actions, sub-tasks---gradually
+displaces the assigned goal & \citet{arike2025goaldrift,menon2026inherited,saebo2026asymmetric} \\
+\bottomrule
+\end{tabularx}
+\caption{Phenomena related to goal drift, by origin of the competing objective.}
+\label{tab:phenomena}
+\end{table}
+
+The distinctions matter for both measurement and design. Misgeneralisation is fixed at training time.
+Hijacking presupposes an adversary and is addressed with security defences. Drift, by contrast, can
+arise in an entirely benign environment, from material that is individually reasonable---a failing
+test, a maintainer's note, a user's side request. In such an environment no single step looks like a
+violation. The deviation exists only at the level of the trajectory.
+
+\subsection{Direct evidence of goal drift in LLM agents}
+
+\citet{arike2025goaldrift} give a goal to an agent through its system prompt and then expose it to
+competing objectives through environmental pressure in a simulated trading environment. The
+best-performing scaffolded agent maintained near-perfect adherence for more than 100{,}000 tokens,
+but all models drifted to some degree. Drift correlated with growing susceptibility to
+\emph{pattern-matching} as the context lengthened: agents increasingly continued what was already in
+their context rather than what their goal prescribed. \citet{menon2026inherited} revisit the setting
+with newer models, which are largely robust when acting alone. That robustness is brittle, though.
+Conditioned on prefilled trajectories from weaker agents, the same models often \emph{inherit} the
+drift, and only one of the tested models (GPT-5.1) remained consistently resilient. This finding is directly
+relevant to agentic tools in which a context is summarised, resumed or handed to a sub-agent.
+
+In coding specifically, \citet{saebo2026asymmetric} give agents built on OpenCode a system-prompt
+constraint and apply codebase pressure in the opposite direction. Violations are \emph{asymmetric}:
+agents abandon constraints more readily when the constraint opposes values such as security or
+privacy. Drift therefore depends on what the competing objective is, not only on how much context
+separates it from the goal.
+
+Earlier, \citet{li2024instability} measured \emph{instruction drift} within eight rounds of dialogue
+and related it to attention decaying away from the system prompt. \citet{ding2026contextecho}
+measure persona drift in long real-world Claude Code and Codex CLI sessions that span thousands of
+tool-using steps and repeated compaction. They introduce a \emph{snapshot-then-probe} protocol that
+evaluates the conversation state without perturbing the main session; we adapt it, by probing a
+forked copy of the session, to measure goal recall. \citet{rath2026agentdrift} proposes a taxonomy
+of semantic, coordination and behavioural drift for multi-agent systems, though this single-author
+work rests on simulation and theoretical modelling.
+
+\subsection{Mechanisms that plausibly produce drift through sub-tasks}
+
+The literature suggests several mechanisms, not mutually exclusive, through which accumulating
+sub-tasks can displace a goal.
+
+\paragraph{Position and dilution.} Models use information at the beginning and end of long contexts
+better than information in the middle \citep{liu2024lost}. The original request sits at the
+beginning of a session. Each sub-task, tool output and error message pushes it further from the
+end, where the most recent material---typically the current sub-task---sits. In a single-author,
+white-box code-audit case study, \citet{xue2026contextrot} holds the task fixed and varies only the
+surrounding context. Pass rates fall from 8/10 runs with a clean context to 3/10 with long contexts,
+whether the padding was relevant or irrelevant, although the difference is only trend-level
+($p\approx0.07$) and a second task showed no degradation. Requirement coverage nevertheless stays
+above 92\%. If this pattern generalises, drift need not look like abandonment: a few silently dropped
+requirements are enough to invalidate an otherwise complete artefact.
+
+\paragraph{Premature commitment and unreliability.} When a specification is revealed over several
+turns rather than all at once, LLM performance drops by 39\% on average, mostly through increased
+\emph{unreliability} rather than lower aptitude: models make assumptions early and fail to recover
+\citep{laban2025lost}. Mid-session user side-requests create exactly this kind of multi-turn,
+incrementally specified situation.
+
+\paragraph{Self-conditioning and pattern-matching.} Models make more mistakes when their own earlier
+errors are in the context \citep{sinha2025illusion}, and drift correlates with pattern-matching on
+recent context \citep{arike2025goaldrift}. A sequence of sub-task actions---fixing a test, then
+another, then a lint warning---can become a pattern that the agent continues after it has stopped
+serving the goal.
+
+\paragraph{Lossy compaction and hand-off.} Summarisation decides what survives of the original
+request. Compression guidelines refined from observed agent failures improve long-horizon agents
+\citep{kang2025acon}, and simply masking old observations matches LLM summarisation on SWE-bench
+Verified at lower cost \citep{lindenbauer2025complexity}; neither study tracks whether the original
+objective survives compression, which is the question that matters for drift. Inherited drift \citep{menon2026inherited} shows that a compressed or transferred
+state can carry the drift along with it.
+
+\paragraph{Decomposition and derailment.} Agents that decompose tasks on demand, when execution fails
+\citep{prasad2024adapt}, generate sub-tasks from errors by design. In multi-agent systems,
+\emph{task derailment} and \emph{disobeying the task specification} are among the 14 failure modes
+of the MAST taxonomy, which was derived from 150 traces and applied to a dataset of more than
+1{,}600 annotated traces \citep{cemri2025mast}. The Agent GPA framework starts from the premise that
+critical agent failures emerge at the interfaces between goal, plan and action, and its judges
+cover most human-annotated errors on the benchmarks it was tested on \citep{jia2025gpa}. These are precisely the interfaces that a sub-task traverses when it enters the
+plan.
+
+\paragraph{Action bias and instruction-like text in the environment.} Coding agents act even when they
+should not. On FixedBench, where no change is needed, state-of-the-art agents still propose undesirable
+patches in 35--65\% of cases \citep{gloaguen2026fixedbench}. Terminal agents must follow cues in
+READMEs, comments and stack traces while ignoring plausible distractors, and the Task Alignment
+Benchmark (TAB) reveals a systematic gap between being capable of a task and being aligned with
+it \citep{mavali2026tab}. Even benign, non-adversarial content in the environment distracts strong GUI
+agents \citep{ma2024caution}. Benign drift and adversarial hijacking therefore share a channel:
+instruction-shaped text in tool outputs.
+
+\paragraph{Proxy sub-goals.} ``Make the tests pass'' is the archetypal sub-goal that can replace the
+goal it was meant to serve. On ImpossibleBench, the specification and the tests are made to
+conflict, so any pass implies a specification-violating shortcut---for example deleting or editing
+the failing test \citep{zhong2025impossiblebench}. This is the drift-as-reward-hacking corner of the
+space \citep{amodei2016concrete}.
+
+\subsection{Manipulating sub-tasks experimentally}
+
+Several recent benchmarks inject material into an ongoing trajectory and can be adapted to study
+drift. InterruptBench formalises three kinds of mid-task user interruption---adding, revising or
+retracting a requirement---in long-horizon web navigation \citep{zou2026interruptbench}. SWE-Touch
+injects plausible conflicting edits, accompanied by a user message, when a coding agent reaches
+task-critical code, lowering the average resolve rate of nine models on SWE-bench Verified by 7.7
+percentage points \citep{tan2026swetouch}.
+AgentDojo pairs user tasks with injected goals and scores utility and attack success separately
+\citep{debenedetti2024agentdojo}. Task Shield defends against injection by checking whether each
+instruction and tool call \emph{serves the user's goal} \citep{jia2024taskshield}; this per-action
+test is a natural oracle for drift. SlopCodeBench shows how agents' code erodes as they repeatedly
+extend their own solutions \citep{orlanski2026slopcode}, a long-horizon complement to single-episode
+drift. Finally, long-context degradation also affects the monitors that might be used to catch
+drift: LLM classifiers miss subtly dangerous agent actions far more often when those actions appear
+deep in long transcripts \citep{martin2026classifier}.
+
+Taken together, the evidence suggests that goal drift through sub-tasks is plausible on mechanistic
+grounds, partially observed in synthetic settings, and measurable with existing tools. What is
+missing is a controlled study of the \emph{dose} and \emph{source} of sub-tasks in a real coding-agent
+harness, joined to the question of what a human supervisor can see.
