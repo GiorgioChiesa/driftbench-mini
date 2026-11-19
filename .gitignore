@@ -2,3 +2,5 @@ __pycache__/
 .claude/worktrees/
 judge/items/
 judge/out/
+results/raw/
+results/logs/
