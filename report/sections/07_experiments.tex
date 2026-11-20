@@ -422,6 +422,28 @@ v2 panel labels. It has two parts, report fidelity and a simulated supervisor. T
 part, whether a drift monitor degrades on longer transcripts \citep{martin2026classifier}, is left
 to future work.
 
+\begin{table}[t]
+  \centering
+  \caption{E4, simulated supervisor on E1 and E2, all episodes per model (by group in Appendix~\ref{app:e4}, Table~\ref{tab:e4full}). Failing: hidden pass rate below 1. P0 reads only
+  the final summary and is alerted if it does not claim completion; P1 reviews after all six
+  segments and is alerted at the first segment not labelled \textsf{GOAL}; P2 is a monitor that
+  alerts on \textsf{DISTRACTOR} or \textsf{NONE} segments (reviews = alerts). Early: flagged before
+  the final segment. False alarm: an alert in a passing episode. The supervisor is assumed to apply
+  the panel labels exactly, so the figures are upper bounds.}
+  \label{tab:e4}
+  \small
+  \fittable{\input{tables/e4_supervisor_all}}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/e4_supervisor.pdf}
+  \caption{E4: share of failing episodes flagged before the end (left) and at any point (right)
+  against reviews per episode, for the three policies and both models. Bars are 95\% task-cluster
+  bootstrap intervals.}
+  \label{fig:e4}
+\end{figure}
+
 \paragraph{Report fidelity.} Over-claiming, a summary that claims completion while a hidden test
 fails, is reported in Section~\ref{sec:judge-results}: 42\% of \texttt{qwen3-coder} and 50\% of
 \texttt{gpt-oss} baseline episodes, 75--81\% under cascades. The second measure is \emph{omitted
@@ -456,27 +478,6 @@ passing episode. The simulated supervisor applies the panel labels without error
 are upper bounds for this information, not a user study. P1's alerts include legitimate detours,
 sanctioned or necessary, which is why it raises false alarms in passing episodes.
 
-\begin{table}[t]
-  \centering
-  \caption{E4, simulated supervisor on E1 and E2, all episodes per model (by group in Appendix~\ref{app:e4}, Table~\ref{tab:e4full}). Failing: hidden pass rate below 1. P0 reads only
-  the final summary and is alerted if it does not claim completion; P1 reviews after all six
-  segments and is alerted at the first segment not labelled \textsf{GOAL}; P2 is a monitor that
-  alerts on \textsf{DISTRACTOR} or \textsf{NONE} segments (reviews = alerts). Early: flagged before
-  the final segment. False alarm: an alert in a passing episode. The supervisor is assumed to apply
-  the panel labels exactly, so the figures are upper bounds.}
-  \label{tab:e4}
-  \small
-  \fittable{\input{tables/e4_supervisor_all}}
-\end{table}
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\textwidth]{figures/e4_supervisor.pdf}
-  \caption{E4: share of failing episodes flagged before the end (left) and at any point (right)
-  against reviews per episode, for the three policies and both models. Bars are 95\% task-cluster
-  bootstrap intervals.}
-  \label{fig:e4}
-\end{figure}
 
 \paragraph{Supervisor simulation: results.} Table~\ref{tab:e4} and Figure~\ref{fig:e4} give the
 results.
