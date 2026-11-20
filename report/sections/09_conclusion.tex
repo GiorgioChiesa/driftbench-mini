@@ -10,7 +10,7 @@ defined goal drift via sub-task injection as a counterfactual degradation, with 
 by source and legitimacy and a matched-length control. We then tested the definition on
 DriftBench-mini, with Claude Code driven by two open-weight models in 1{,}332 controlled episodes and a 72-episode compaction pilot.
 
-The findings revise rather than confirm the starting intuition:
+The findings revise the starting intuition:
 \begin{itemize}
   \item \textbf{Kind matters more than count.} Neutral interruptions and mild distractors left goal
         completion unchanged. Broken dependencies on the path to the goal and, for the weaker model,
@@ -36,10 +36,10 @@ The findings revise rather than confirm the starting intuition:
         flagged fewer than one in five. Failing episodes look like goal work; only the requirements
         show the failure.
 \end{itemize}
-For the human side of the interaction these results point to oversight based on requirements rather
-than code, checkpoints triggered by recognisable risky moments rather than fixed intervals,
-mid-session requests treated as queued tasks, and mitigations enforced by the harness rather than
-requested from the model.
+For the human side of the interaction, these results argue for oversight that checks requirements
+instead of code, checkpoints triggered at recognisable risky moments instead of fixed intervals,
+mid-session requests handled as queued tasks, and mitigations that the harness enforces without
+relying on the model's compliance.
 
 Four lines of work follow from what this study could not settle:
 \begin{itemize}
@@ -54,4 +54,4 @@ Four lines of work follow from what this study could not settle:
 \end{itemize}
 Repeating the core experiments with frontier models, longer and less structured sessions, and
 real-world rather than planted sub-tasks would show how far the thresholds observed here move as
-agents become more capable. We expect them to move; whether they vanish is an empirical question.
+agents become more capable. We expect them to move; our data cannot say whether they disappear.

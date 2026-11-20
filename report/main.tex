@@ -7,11 +7,16 @@
 \usepackage{booktabs,tabularx}
 \usepackage{graphicx}
 \usepackage{enumitem}
+\usepackage{adjustbox}
+\usepackage{makecell}
+\usepackage{flafter}
 \usepackage[authoryear,round]{natbib}
-\usepackage[colorinlistoftodos,textsize=small]{todonotes}
 \usepackage[hidelinks]{hyperref}
 
 \setlist{itemsep=2pt,topsep=4pt}
+\setlength{\emergencystretch}{2em}
+% Shrink a table to the text width only when it is wider; never enlarge it.
+\newcommand{\fittable}[1]{\begin{adjustbox}{max width=\textwidth}#1\end{adjustbox}}
 \newcommand{\Gz}{G_0}
 \newcommand{\Req}{R(G_0)}
 
@@ -32,15 +37,17 @@ define \emph{goal drift via sub-task injection} as a counterfactual degradation 
 sanctioned, necessary and distracting sub-tasks, and test it on DriftBench-mini, twelve coding tasks
 with planted sub-tasks, driving Claude Code with two locally hosted open-weight models (1{,}332
 episodes). Broken dependencies that the goal relies on reduce goal completion sharply in both models:
-from 0.77 to 0.50 and from 0.48 to 0.24 with four of them, beyond a matched-length control. Four side
-requests from the user overload only the weaker model, distractors are largely ignored, and four
-lightweight harness mitigations do not significantly reduce the loss. A panel of three LLM judges
-(Fleiss' $\kappa=0.67$ on the binary off-goal label) finds that off-goal work is mostly legitimate,
-distraction is rare and summaries often claim completion while requirements fail. In a
-forced-compaction pilot, compaction shifts later effort from the goal towards the user's requests
-($+0.13$ off-goal share). A simulated supervisor shows that reviewing or monitoring the agent's
-activity catches few failing episodes early, because the failure is incompletion: only checking the
-requirements reveals it.
+from 0.77 to 0.50 and from 0.48 to 0.24 with four of them. For \texttt{qwen3-coder} the loss is
+significantly larger than under a matched-length control; for \texttt{gpt-oss} it points the same
+way. Four side requests from the user overload only the weaker model, distractors are largely
+ignored, and four lightweight harness mitigations do not significantly reduce the loss. A panel of
+three LLM judges (Fleiss' $\kappa=0.67$ on the binary off-goal label) finds that off-goal work is
+mostly legitimate and distraction is rare, while final summaries often claim completion when
+requirements fail. In a small forced-compaction pilot, compaction shifts later effort from the goal
+towards the user's requests ($+0.13$ off-goal share). In a simulated supervisor, reviewing the
+agent's activity at every pause flags about half of the failing episodes early but also alerts in
+most passing ones, and a monitor for illegitimate work flags fewer than one in five. The failure is
+incompletion, so only checking the requirements reveals it.
 \end{abstract}
 
 \input{sections/01_introduction}
@@ -52,8 +59,13 @@ requirements reveals it.
 \input{sections/07_experiments}
 \input{sections/08_discussion}
 \input{sections/09_conclusion}
+\input{sections/10_availability}
 
 \bibliographystyle{plainnat}
 \bibliography{refs}
+
+\clearpage
+\appendix
+\input{sections/11_appendix}
 
 \end{document}

@@ -1,0 +1,28 @@
+\section*{Data and code availability}
+\addcontentsline{toc}{section}{Data and code availability}
+\label{sec:availability}
+
+The harness, the twelve DriftBench-mini tasks, the judge pipeline, the analysis scripts and the
+result tables and figures used in this report are at
+\url{https://github.com/GiorgioChiesa/driftbench-mini} under the MIT License. The raw runs of
+E0--E3 (Claude Code transcripts, diffs, final work trees and per-episode metrics), the judge items
+with their manifests, and the panel's majority labels are at
+\url{https://huggingface.co/datasets/SGio16/driftbench-mini} under CC BY 4.0. With these files the
+judge-based measures, E3 and E4 can be recomputed from a fresh clone without running any model. The
+manifests map each opaque item identifier back to its run, agent model and condition. The judging
+reported here was blind to the agent model and the outcome, but now that the manifests are public,
+anyone who re-judges these items can no longer be blind to them. The tasks are synthetic and the
+data contain no personal information. Model weights and the Claude Code binary are not
+redistributed.
+
+\paragraph{Reproducibility.} All E1--E3 episodes used Claude Code~2.1.268 in headless mode and Ollama~0.20.1,
+with a 64k-token context. The agent models were \texttt{qwen3-coder:30b} and \texttt{gpt-oss:20b}.
+The three judges ran at temperature 0: \texttt{gpt-oss:120b} with medium reasoning effort, and
+\texttt{mistral-small3.2:24b} and \texttt{llama3.3:70b} without reasoning. The task sandbox runs Python~3.11 with
+pytest~8.3.3. All E2 episodes and all but the last 45 E1 episodes ran on a departmental server with
+NVIDIA A40 GPUs. The last 45 E1 episodes, the 72 episodes of the E3 pilot and the whole judge panel
+ran on NVIDIA A100 GPUs of the CINECA Leonardo cluster. The agent episodes of E1, E2 and E3 took
+about 550 episode-hours of wall time (473, 66 and 13); with three episodes sharing one GPU, this is
+roughly 185 GPU-hours. The E3 pilot, including its judging, used about 6 A100 GPU-hours. The GPU
+time of the E1/E2 judging was not logged separately. Confidence intervals come from 2{,}000
+task-cluster bootstrap resamples (Section~\ref{sec:analysis}).

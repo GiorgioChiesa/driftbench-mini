@@ -1,0 +1,16 @@
+\section{Simulated supervisor by group}
+\label{app:e4}
+
+Table~\ref{tab:e4full} breaks down the E4 supervisor simulation of Section~\ref{sec:e4} by injection
+source and E2 condition. The ``All episodes'' rows repeat Table~\ref{tab:e4}.
+
+\begin{table}[!ht]
+  \centering
+  \caption{E4, simulated supervisor on E1 and E2, by group. Columns and policies as in
+  Table~\ref{tab:e4}. \emph{No sub-task} is the $k=0$ baseline; each source row pools $k=1,2,4$ (108
+  episodes); E2 rows are the five \texttt{qwen3-coder} conditions under the \textsf{mix} load. The
+  supervisor is assumed to apply the panel labels exactly, so the figures are upper bounds.}
+  \label{tab:e4full}
+  \small
+  \fittable{\input{tables/e4_supervisor}}
+\end{table}

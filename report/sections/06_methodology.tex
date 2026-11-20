@@ -4,8 +4,8 @@
 The experiments put the definition of Section~\ref{sec:definition} into practice with three
 components: a small benchmark of coding tasks with planted sub-tasks (DriftBench-mini), a harness
 that drives Claude Code headlessly with locally hosted open-weight models, and an evaluator that
-scores the final repository and the trajectory. All code, task material and raw trajectories are
-part of the project repository.
+scores the final repository and the trajectory. The code, the task material and the raw trajectories
+are public (see \emph{Data and code availability}).
 
 \subsection{DriftBench-mini}
 \label{sec:bench}
@@ -95,10 +95,11 @@ the NVIDIA~535 drivers of the servers (newer releases fall back silently to the 
 its own GPU and three parallel slots, with three episodes running at a time. Two settings turned out
 to matter for speed. Disabling Claude Code's per-request attribution header keeps the prompt prefix
 stable, so Ollama can reuse its cache. Never running more episodes than slots avoids evicting
-other episodes' caches. Almost all episodes ran on a departmental GPU server (NVIDIA A40), with the
-agent in a Docker container that mounted only the task repository and the evaluator in a second
-container without network. The last 45 of the 1{,}152 E1 episodes ran on the CINECA Leonardo
-cluster (NVIDIA A100) in a SLURM job, with Claude Code and pytest as plain processes. There we
+other episodes' caches. All E2 episodes and all but the last 45 of the 1{,}152 E1 episodes ran on a departmental GPU server
+(NVIDIA A40), with the agent in a Docker container that mounted only the task repository and the
+evaluator in a second container without network. Those 45 E1 episodes and the 72 episodes of the E3
+pilot ran on the CINECA Leonardo cluster (NVIDIA A100) in SLURM jobs, with Claude Code and pytest as
+plain processes. There we
 checked that the model weights were identical (same blob digests). Because that setup has no mount
 isolation, the harness flags every tool call that references the benchmark's own files (hidden
 tests, solutions, task definitions); no episode triggered it.
@@ -132,7 +133,7 @@ families of Section~\ref{sec:definition}:
         number of times a mitigation hook fired.
   \item[Representation and reporting.] The probe answer and the final summary are stored for the
         LLM judges (goal recall, goal replacement and report fidelity). The judge panel of E5
-        (Section~\ref{sec:e5}) now labels every segment and every final summary; the measures
+        (Section~\ref{sec:e5}) labels every segment and every final summary; the measures
         derived from its labels are defined in Section~\ref{sec:judge-results}. Goal recall from the
         probe is not used, because the judges do not agree on it ($\kappa=0.17$).
 \end{description}

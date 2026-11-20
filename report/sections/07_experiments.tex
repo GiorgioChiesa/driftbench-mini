@@ -44,7 +44,7 @@ passes 48\% and fully meets it in 31\%.
   * $p<.05$, ** $p<.01$, *** $p<.001$.}
   \label{tab:e1}
   \small
-  \resizebox{\textwidth}{!}{\input{tables/e1_hidden}}
+  \fittable{\input{tables/e1_hidden}}
 \end{table}
 
 \begin{figure}[t]
@@ -59,13 +59,13 @@ passes 48\% and fully meets it in 31\%.
 \begin{itemize}
   \item \textbf{Cascades are the only source that degrades the goal in both models.} With four
         broken dependencies, \texttt{qwen3-coder} falls from 0.77 to 0.50 (slope $-0.065$ per
-        sub-task, Holm $p=.006$) and \texttt{gpt-oss} from 0.48 to 0.24 (slope $-0.062$, Holm
-        $p=.006$). The share of episodes that fully meet the goal falls from 44\% to 8\% and from 31\%
+        sub-task, Holm $p=.005$) and \texttt{gpt-oss} from 0.48 to 0.24 (slope $-0.062$, Holm
+        $p=.005$). The share of episodes that fully meet the goal falls from 44\% to 8\% and from 31\%
         to 3\%. For \texttt{qwen3-coder} the loss is significantly larger than with the filler
         control (excess slope $-0.083$, Holm $p<.001$). For \texttt{gpt-oss} the difference points
-        the same way ($-0.042$, uncorrected $p=.010$, Holm $p=.07$).
+        the same way ($-0.041$, uncorrected $p=.010$, Holm $p=.07$).
   \item \textbf{User side requests overload the weaker model.} \texttt{qwen3-coder} absorbs up to
-        four requests without loss on the goal (0.77--0.79) and fulfils about 90\% of them.
+        four requests without loss on the goal (0.73--0.79) and fulfils about 90\% of them.
         \texttt{gpt-oss} is unaffected up to $k=2$. At $k=4$ it loses on both fronts: the pass rate
         drops to 0.23 ($D_4=-0.25$, 95\% CI $[-0.46,-0.04]$) and only 40\% of the side requests are
         met. The linear trend is not significant after correction (uncorrected $p=.03$, Holm $p=.27$).
@@ -137,7 +137,7 @@ answered with the hook's help.
   correction.}
   \label{tab:e2}
   \small
-  \resizebox{\textwidth}{!}{\input{tables/e2_conditions}}
+  \fittable{\input{tables/e2_conditions}}
 \end{table}
 
 \begin{figure}[t]
@@ -255,7 +255,7 @@ interval that just excludes zero should be read with caution.
   of episodes whose final summary claims completion while a hidden test fails.}
   \label{tab:e5e1}
   \small
-  \resizebox{\textwidth}{!}{\input{tables/e5_e1_measures}}
+  \fittable{\input{tables/e5_e1_measures}}
 \end{table}
 
 \begin{figure}[t]
@@ -273,7 +273,7 @@ interval that just excludes zero should be read with caution.
   (not corrected for multiplicity).}
   \label{tab:e5e2}
   \small
-  \resizebox{\textwidth}{!}{\input{tables/e5_e2_measures}}
+  \fittable{\input{tables/e5_e2_measures}}
 \end{table}
 
 \paragraph{Off-goal work follows the user's requests.} The off-goal share rises with $k$ only for
@@ -283,9 +283,9 @@ baseline is $D_4=+0.52$ $[0.45, 0.58]$ and $+0.54$ $[0.46, 0.62]$, and the diffe
 control at the same $k$ is of the same size ($+0.52$ $[0.45, 0.57]$ and $+0.59$ $[0.53, 0.65]$).
 Cascades raise the share for \texttt{qwen3-coder} only: 0.18 at $k=4$, $D_4=+0.17$ $[0.09, 0.26]$.
 For \texttt{gpt-oss} cascades stay at baseline. The \textsf{env}, \textsf{text} and \textsf{filler}
-conditions stay within $\pm0.06$ of baseline in both models, with intervals that include zero. The
-one exception is \texttt{qwen3-coder} with four \textsf{env} injections, $+0.005$ $[0, 0.014]$, a
-negligible amount.
+conditions stay within $\pm0.06$ of baseline in both models, with intervals that include zero. A few
+\texttt{qwen3-coder} intervals only touch zero at one end, such as $+0.005$ $[0, 0.014]$ with four
+\textsf{env} injections, and the amounts are negligible.
 
 \paragraph{Almost none of it is distraction.} The distractor share is close to zero everywhere. Its
 largest value is 0.064, for \texttt{gpt-oss} with four \textsf{env} injections, and for
@@ -339,7 +339,7 @@ not run, for the reason given at the end of this section.
   95\% task-cluster bootstrap intervals. The comparison is correlational.}
   \label{tab:e3obs}
   \small
-  \resizebox{\textwidth}{!}{\input{tables/e3_obs}}
+  \fittable{\input{tables/e3_obs}}
 \end{table}
 
 \paragraph{Spontaneous compaction.} In E1 and E2, 135 \texttt{qwen3-coder} episodes triggered
@@ -377,7 +377,7 @@ only 0.562 (0.37--0.73), below the criterion, so over-claiming in E3 carries tha
   ($\kappa=0.56$); goal replacement is exploratory ($\kappa=0.31$). The pilot is exploratory.}
   \label{tab:e3pilot}
   \small
-  \resizebox{\textwidth}{!}{\input{tables/e3_pilot}}
+  \fittable{\input{tables/e3_pilot}}
 \end{table}
 
 \paragraph{Forced compaction: results.} Table~\ref{tab:e3pilot} gives the outcome. After the
@@ -458,7 +458,7 @@ sanctioned or necessary, which is why it raises false alarms in passing episodes
 
 \begin{table}[t]
   \centering
-  \caption{E4, simulated supervisor on E1 and E2. Failing: hidden pass rate below 1. P0 reads only
+  \caption{E4, simulated supervisor on E1 and E2, all episodes per model (by group in Appendix~\ref{app:e4}, Table~\ref{tab:e4full}). Failing: hidden pass rate below 1. P0 reads only
   the final summary and is alerted if it does not claim completion; P1 reviews after all six
   segments and is alerted at the first segment not labelled \textsf{GOAL}; P2 is a monitor that
   alerts on \textsf{DISTRACTOR} or \textsf{NONE} segments (reviews = alerts). Early: flagged before
@@ -466,7 +466,7 @@ sanctioned or necessary, which is why it raises false alarms in passing episodes
   the panel labels exactly, so the figures are upper bounds.}
   \label{tab:e4}
   \small
-  \resizebox{\textwidth}{!}{\input{tables/e4_supervisor}}
+  \fittable{\input{tables/e4_supervisor_all}}
 \end{table}
 
 \begin{figure}[t]
@@ -487,7 +487,8 @@ results.
   \item \emph{P1} flags 56\% (95\% CI 45--70\%) and 44\% (36--54\%) of failing episodes early, and
         73\% and 54\% at some point, at six reviews per episode. False alarms are 77\% and 55\%.
         Most of its alerts are detours the user asked for: with user side requests it flags
-        94--96\% of failing episodes early, and also 98--100\% of the passing ones.
+        94--96\% of failing episodes early, and also 98--100\% of the passing ones
+        (Table~\ref{tab:e4full}).
   \item \emph{P2} costs 0.67 and 0.33 reviews per episode and flags 19\% (9--32\%) and 18\%
         (12--25\%) of failing episodes early, with 62\% and 28\% false alarms. Per review it flags
         about three (\texttt{qwen3-coder}) to seven (\texttt{gpt-oss}) times as many failing
